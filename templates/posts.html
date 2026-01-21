@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Home - WordPress Extractor{% endblock %}
+{% block content %}
+    <h2>All Posts and Pages</h2>
+
+    <div class="export-buttons">
+        <a href="{{ url_for('export_posts_csv') }}" class="button">Export Posts to CSV</a>
+        <a href="{{ url_for('export_posts_json') }}" class="button">Export Posts to JSON</a>
+    </div>
+
+    <form method="GET" action="{{ url_for('index') }}" class="filter-form">
+        <input type="text" name="search" placeholder="Search by title or content..." value="{{ search_query }}">
+        <select name="post_type_filter">
+            <option value="all" {% if post_type_filter == 'all' %}selected{% endif %}>All Content Types</option>
+            {% for ptype in distinct_post_types %}
+                <option value="{{ ptype }}" {% if post_type_filter == ptype %}selected{% endif %}>{{ ptype.capitalize() }}</option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="Filter">
+    </form>
+
+    <ul class="post-list">
+        {% for post in posts %}
+        <li class="post-item">
+            <h2><a href="{{ url_for('post_detail', post_id=post.post_id) }}">{{ post.title }}</a></h2>
+            <p class="post-meta">
+                Type: {{ post.post_type }} | Status: {{ post.status }} |
+                Published: {{ post.pub_date if post.pub_date else post.post_date }}
+            </p>
+            <div>
+                {% if post.content_encoded %}
+                    {{ (post.content_encoded[:200] + '...') | safe }}
+                {% elif post.excerpt_encoded %}
+                    {{ post.excerpt_encoded | safe }}
+                {% else %}
+                    No content available.
+                {% endif %}
+            </div>
+        </li>
+        {% else %}
+        <p>No posts or pages found matching your criteria.</p>
+        {% endfor %}
+    </ul>
+{% endblock %}

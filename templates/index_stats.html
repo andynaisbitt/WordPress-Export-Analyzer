@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - WordPress Extractor{% endblock %}
+{% block content %}
+    <h2>Dashboard Overview</h2>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Posts</h3>
+            <p>{{ total_posts }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Pages</h3>
+            <p>{{ total_pages }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Authors</h3>
+            <p>{{ total_authors }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Categories</h3>
+            <p>{{ total_categories }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Tags</h3>
+            <p>{{ total_tags }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total External Links</h3>
+            <p>{{ total_external_links }}</p>
+        </div>
+    </div>
+    <p><a href="{{ url_for('posts_list') }}">View All Posts and Pages &rarr;</a></p>
+{% endblock %}

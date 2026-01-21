@@ -1,0 +1,38 @@
+# Database
+*.db
+*.sqlite3
+
+# Exported data
+*.csv
+*.json
+
+# Uploads
+uploads/
+*.xml
+
+# HTML content
+all_blog_posts/
+all_pages/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE files
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Dependencies
+venv/
+.venv/
+env/
+.env
+
+# OS-specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Internal Link Rankings - WordPress Extractor{% endblock %}
+{% block content %}
+    <h2>Internal Link Rankings</h2>
+    <p>Posts and pages ranked by the number of internal backlinks they receive.</p>
+    {% if ranked_posts %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Internal Backlinks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in ranked_posts %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><a href="{{ url_for('post_detail', post_id=post.post_id) }}">{{ post.title }}</a></td>
+                    <td>{{ post.post_type }}</td>
+                    <td>{{ post.internal_backlink_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No posts or pages with internal links found.</p>
+    {% endif %}
+{% endblock %}

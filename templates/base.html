@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WordPress Extractor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>WordPress Extractor</h1>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li><a href="{{ url_for('posts_list') }}">Posts</a></li>
+                    <li><a href="{{ url_for('upload_file') }}">Upload XML</a></li>
+                    <li><a href="{{ url_for('authors_list') }}">Authors</a></li>
+                    <li><a href="{{ url_for('categories_list') }}">Categories</a></li>
+                    <li><a href="{{ url_for('tags_list') }}">Tags</a></li>
+                    <li><a href="{{ url_for('internal_link_rankings') }}">Internal Link Rankings</a></li>
+                    <li><a href="{{ url_for('external_links_audit') }}">External Links Audit</a></li>
+                    <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 WordPress Extractor</p>
+        </div>
+    </footer>
+</body>
+</html>

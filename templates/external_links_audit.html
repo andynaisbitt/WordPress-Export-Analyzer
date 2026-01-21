@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}External Links Audit - WordPress Extractor{% endblock %}
+{% block content %}
+    <h2>External Links Audit</h2>
+    <p>A list of external links found within your WordPress content.</p>
+    {% if external_links %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Source Post Title</th>
+                    <th>Linked URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for link in external_links %}
+                <tr>
+                    <td><a href="{{ url_for('post_detail', post_id=link.source_post_id) }}">{{ link.source_post_title }}</a></td>
+                    <td><a href="{{ link.linked_url }}" target="_blank" rel="noopener noreferrer">{{ link.linked_url }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No external links found. Please ensure an XML file has been uploaded and processed.</p>
+    {% endif %}
+{% endblock %}

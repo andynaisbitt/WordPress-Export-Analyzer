@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{{ post.title }} - WordPress Extractor{% endblock %}
+{% block content %}
+    <a href="{{ url_for('index') }}" class="back-link">&larr; Back to all posts</a>
+    <h2>{{ post.title }}</h2>
+    <p class="post-meta">
+        By: {% if post.author %}{{ post.author.display_name }}{% else %}{{ post.creator }}{% endif %} |
+        Type: {{ post.post_type }} | Status: {{ post.status }} |
+        Published: {{ post.pub_date if post.pub_date else post.post_date }}
+    </p>
+
+    {% if post.post_type in ['post', 'page'] %}
+        <div class="meta-info">
+            <h3>SEO Metadata</h3>
+            <ul>
+                <li><strong>SEO Title:</strong> {{ post.seo_title if post.seo_title else 'N/A' }}</li>
+                <li><strong>SEO Description:</strong> {{ post.seo_description if post.seo_description else 'N/A' }}</li>
+                <li><strong>SEO Keywords:</strong> {{ post.seo_keywords if post.seo_keywords else 'N/A' }}</li>
+                <li><strong>Internal Backlinks:</strong> {{ post.internal_backlink_count }}</li>
+            </ul>
+        </div>
+
+        <div class="meta-info">
+            <h3>Categories</h3>
+            <ul>
+                {% if categories %}
+                    {% for category in categories %}
+                        <li>{{ category.name }}</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No categories.</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="meta-info">
+            <h3>Tags</h3>
+            <ul>
+                {% if tags %}
+                    {% for tag in tags %}
+                        <li>{{ tag.name }}</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No tags.</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="link-info">
+            <h3>External Links</h3>
+            {% if external_links %}
+                <ul>
+                    {% for link in external_links %}
+                        <li><a href="{{ link.linked_url }}" target="_blank" rel="noopener noreferrer">{{ link.linked_url }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No external links found.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="post-content">
+        <h3>Content</h3>
+        {{ display_content | safe }}
+    </div>
+{% endblock %}

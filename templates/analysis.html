@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Blog Post Analysis - WordPress Extractor{% endblock %}
+{% block content %}
+    <h2>Site Information</h2>
+    <p><strong>Site Title:</strong> {{ site_info.get('title', 'N/A') }}</p>
+    <p><strong>Site Description:</strong> {{ site_info.get('description', 'N/A') }}</p>
+    <p><strong>Active Plugins:</strong> {{ site_info.get('active_plugins', 'N/A') }}</p>
+
+    <!-- Future analysis features will go here -->
+{% endblock %}

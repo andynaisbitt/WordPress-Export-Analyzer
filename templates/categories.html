@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Categories - WordPress Extractor{% endblock %}
+{% block content %}
+    <h2>Categories</h2>
+    {% if categories %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Nicename</th>
+                    <th>Description</th>
+                    <th>Parent</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in categories %}
+                <tr>
+                    <td>{{ category.name }}</td>
+                    <td>{{ category.nicename }}</td>
+                    <td>{{ category.description if category.description else 'N/A' }}</td>
+                    <td>{{ category.parent if category.parent else 'N/A' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No categories found.</p>
+    {% endif %}
+{% endblock %}
