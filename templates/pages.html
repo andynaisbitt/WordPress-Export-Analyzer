@@ -22,17 +22,6 @@
         </select>
         {% endif %}
 
-        {% if post_type_filter == 'post' and all_tags %}
-        <select name="tag" onchange="this.form.submit()">
-            <option value="">-- All Tags --</option>
-            {% for t in all_tags %}
-                <option value="{{ t.name }}" {% if t.name == tag_filter %}selected{% endif %}>
-                    {{ t.name }}
-                </option>
-            {% endfor %}
-        </select>
-        {% endif %}
-
         <input type="submit" value="Filter">
     </form>
 
@@ -42,8 +31,6 @@
                 <tr>
                     <th>Title</th>
                     <th>Author</th>
-                    <th>Categories</th>
-                    <th>Tags</th>
                     <th>Comments</th>
                     <th>Status</th>
                     <th>Published Date</th>
@@ -56,27 +43,13 @@
                         <strong><a href="{{ url_for('post_detail', post_id=post.post_id) }}">{{ post.title or "Untitled" }}</a></strong>
                     </td>
                     <td>{{ post.creator if post.creator else 'N/A' }}</td>
-                    <td>
-                        {% for pc in post.post_categories %}
-                            <a href="{{ url_for('posts_list', category=pc.category.name) }}">{{ pc.category.name }}</a>{% if not loop.last %}, {% endif %}
-                        {% else %}
-                            N/A
-                        {% endfor %}
-                    </td>
-                    <td>
-                        {% for pt in post.post_tags %}
-                            {{ pt.tag.name }}{% if not loop.last %}, {% endif %}
-                        {% else %}
-                            N/A
-                        {% endfor %}
-                    </td>
                     <td>{{ post.comment_count }}</td>
                     <td>{{ post.status }}</td>
                     <td>{{ post.post_date }}</td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" style="text-align: center;">No {{ post_type_filter }} found matching your criteria.</td>
+                    <td colspan="5" style="text-align: center;">No {{ post_type_filter }} found matching your criteria.</td>
                 </tr>
                 {% endfor %}
             </tbody>

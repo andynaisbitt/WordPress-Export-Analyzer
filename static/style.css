@@ -371,3 +371,47 @@ footer {
 .button:hover {
     background-color: #0056b3;
 }
+
+/* Pagination Styles */
+.pagination {
+    margin-top: 30px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+}
+
+.pagination span {
+    margin: 0 10px;
+    color: #555;
+    font-weight: bold;
+}
+
+.pagination .button {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.pagination .button:hover {
+    background-color: #e0e0e0;
+}
+
+.pagination .button.active {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.pagination .button.disabled {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+    border-color: #dee2e6;
+}
+
+.pagination .ellipsis {
+    padding: 10px 0;
+    color: #6c757d;
+}

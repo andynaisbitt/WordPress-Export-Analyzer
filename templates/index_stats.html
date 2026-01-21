@@ -27,6 +27,14 @@
             <h3>Total External Links</h3>
             <p>{{ total_external_links }}</p>
         </div>
+        <div class="stat-card">
+            <h3>Total Comments</h3>
+            <p>{{ total_comments }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Attachments</h3>
+            <p>{{ total_attachments }}</p>
+        </div>
     </div>
     <p><a href="{{ url_for('posts_list') }}">View All Posts and Pages &rarr;</a></p>
 {% endblock %}

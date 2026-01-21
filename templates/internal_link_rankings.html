@@ -4,27 +4,69 @@
     <h2>Internal Link Rankings</h2>
     <p>Posts and pages ranked by the number of internal backlinks they receive.</p>
     {% if ranked_posts %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Title</th>
-                    <th>Type</th>
-                    <th>Internal Backlinks</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for post in ranked_posts %}
-                <tr>
-                    <td>{{ loop.index }}</td>
-                    <td><a href="{{ url_for('post_detail', post_id=post.post_id) }}">{{ post.title }}</a></td>
-                    <td>{{ post.post_type }}</td>
-                    <td>{{ post.internal_backlink_count }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Internal Backlinks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for post in ranked_posts %}
+                    <tr>
+                        <td>{{ (page - 1) * 20 + loop.index }}</td>
+                        <td><a href="{{ url_for('post_detail', post_id=post.post_id) }}">{{ post.title or "Untitled" }}</a></td>
+                        <td>{{ post.post_type }}</td>
+                        <td>{{ post.status }}</td>
+                        <td>{{ post.internal_backlink_count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
         <p>No posts or pages with internal links found.</p>
     {% endif %}
+
+    <div class="pagination">
+        {% if total_pages and total_pages > 1 %}
+            <span>Page {{ page }} of {{ total_pages }}.</span>
+            
+            <a href="{{ url_for(request.endpoint, page=page-1) if page > 1 else '#' }}"
+               class="button {% if page <= 1 %}disabled{% endif %}">
+                &laquo; Previous
+            </a>
+
+            {% set start_page = [1, page - 2] | max %}
+            {% set end_page = [total_pages, page + 2] | min %}
+
+            {% if start_page > 1 %}
+                <a href="{{ url_for(request.endpoint, page=1) }}" class="button">1</a>
+                {% if start_page > 2 %}
+                    <span class="ellipsis">…</span>
+                {% endif %}
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+                <a href="{{ url_for(request.endpoint, page=p) }}"
+                   class="button {% if p == page %}active{% endif %}">{{ p }}</a>
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+                {% if end_page < total_pages - 1 %}
+                    <span class="ellipsis">…</span>
+                {% endif %}
+                <a href="{{ url_for(request.endpoint, page=total_pages) }}" class="button">{{ total_pages }}</a>
+            {% endif %}
+
+            <a href="{{ url_for(request.endpoint, page=page+1) if page < total_pages else '#' }}"
+               class="button {% if page >= total_pages %}disabled{% endif %}">
+                Next &raquo;
+            </a>
+        {% endif %}
+    </div>
 {% endblock %}

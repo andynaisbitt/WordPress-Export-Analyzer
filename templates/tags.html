@@ -2,20 +2,36 @@
 {% block title %}Tags - WordPress Extractor{% endblock %}
 {% block content %}
     <h2>Tags</h2>
-    {% if tags %}
+    {% if tags_with_counts %}
         <table>
             <thead>
                 <tr>
-                    <th>Name</th>
+                    <th>
+                        <a href="{{ url_for('tags_list', sort_by='name', sort_order='asc' if sort_by == 'name' and sort_order == 'desc' else 'desc') }}">
+                            Name 
+                            {% if sort_by == 'name' %}
+                                {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
                     <th>Nicename</th>
+                    <th>
+                        <a href="{{ url_for('tags_list', sort_by='post_count', sort_order='asc' if sort_by == 'post_count' and sort_order == 'desc' else 'desc') }}">
+                            Post Count 
+                            {% if sort_by == 'post_count' %}
+                                {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
                     <th>Description</th>
                 </tr>
             </thead>
             <tbody>
-                {% for tag in tags %}
+                {% for tag, post_count in tags_with_counts %}
                 <tr>
-                    <td>{{ tag.name }}</td>
-                    <td>{{ tag.nicename }}</td>
+                    <td><a href="{{ url_for('posts_list', tag=tag.name) }}">{{ tag.name }}</a></td>
+                    <td>{{ tag.nicename if tag.nicename else 'N/A' }}</td>
+                    <td>{{ post_count }}</td>
                     <td>{{ tag.description if tag.description else 'N/A' }}</td>
                 </tr>
                 {% endfor %}

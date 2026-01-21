@@ -10,7 +10,6 @@ NAMESPACES = {
     'content': 'http://purl.org/rss/1.0/modules/content/',
     'excerpt': 'http://wordpress.org/rss/1.0/modules/excerpt/',
     'dc': 'http://purl.org/dc/elements/1.1/',
-    '': 'http://purl.org/rss/1.0/modules/content/', # Default namespace for content:encoded
 }
 
 def register_all_namespaces(filename):
@@ -238,9 +237,14 @@ def parse_wordpress_xml(xml_file, db_name, your_domain):
     # --- Parse Tags ---
     print("Extracting Tags...")
     for tag_node in channel.findall('wp:tag', NAMESPACES):
+        # Be more robust in finding the nicename/slug
+        nicename = get_wp_tag_text(tag_node, 'tag_nicename')
+        if not nicename:
+            nicename = get_wp_tag_text(tag_node, 'tag_slug')
+
         tag = {
             'term_id': int(get_wp_tag_text(tag_node, 'term_id')),
-            'nicename': get_wp_tag_text(tag_node, 'tag_nicename'),
+            'nicename': nicename,
             'name': get_wp_tag_text(tag_node, 'tag_name'),
             'description': get_wp_tag_text(tag_node, 'tag_description'),
         }
@@ -279,12 +283,21 @@ def parse_wordpress_xml(xml_file, db_name, your_domain):
         # Determine if it's a post, page, or attachment and process accordingly
         if post_type in ['post', 'page', 'attachment']:
             title = get_tag_text(item_node, 'title')
+            content_encoded = get_tag_text(item_node, 'encoded', 'content')
+
+            if not title:
+                if content_encoded:
+                    match = re.search(r'<h[12]>(.*?)<\/h[12]>', content_encoded)
+                    if match:
+                        title = match.group(1)
+                if not title:
+                    title = "Untitled Post"
+
             link = get_tag_text(item_node, 'link')
             pub_date = get_tag_text(item_node, 'pubDate')
             creator = get_tag_text(item_node, 'creator', 'dc')
             guid = get_tag_text(item_node, 'guid')
             description = get_tag_text(item_node, 'description')
-            content_encoded = get_tag_text(item_node, 'encoded', 'content')
             excerpt_encoded = get_tag_text(item_node, 'encoded', 'excerpt')
             post_date = get_wp_tag_text(item_node, 'post_date')
             post_date_gmt = get_wp_tag_text(item_node, 'post_date_gmt')
@@ -399,7 +412,7 @@ def parse_wordpress_xml(xml_file, db_name, your_domain):
                 if meta_key not in ['_aioseo_title', '_aioseo_description', '_aioseo_keywords']:
                     meta_value = get_wp_tag_text(postmeta_node, 'meta_value')
                     cursor.execute('''
-                        INSERT INTO post_meta (post_id, meta_key, meta_value)
+                        INSERT OR IGNORE INTO post_meta (post_id, meta_key, meta_value)
                         VALUES (?, ?, ?)
                     ''', (post_id, meta_key, meta_value))
 
@@ -421,7 +434,7 @@ def parse_wordpress_xml(xml_file, db_name, your_domain):
                     'comment_user_id': int(get_wp_tag_text(comment_node, 'comment_user_id') or 0),
                 }
                 cursor.execute('''
-                    INSERT INTO comments (
+                    INSERT OR IGNORE INTO comments (
                         comment_id, post_id, comment_author, comment_author_email,
                         comment_author_url, comment_author_ip, comment_date,
                         comment_date_gmt, comment_content, comment_approved,
@@ -441,7 +454,7 @@ def parse_wordpress_xml(xml_file, db_name, your_domain):
                 found_external_links = external_link_pattern.findall(content_encoded)
                 for ext_link in found_external_links:
                     cursor.execute('''
-                        INSERT INTO external_links (source_post_id, source_post_title, linked_url)
+                        INSERT OR IGNORE INTO external_links (source_post_id, source_post_title, linked_url)
                         VALUES (?, ?, ?)
                     ''', (post_id, title, ext_link))
 

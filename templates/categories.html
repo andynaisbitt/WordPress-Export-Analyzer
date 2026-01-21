@@ -2,21 +2,41 @@
 {% block title %}Categories - WordPress Extractor{% endblock %}
 {% block content %}
     <h2>Categories</h2>
-    {% if categories %}
+    <div class="export-buttons">
+        <a href="{{ url_for('export_categories_csv') }}" class="button">Export Categories to CSV</a>
+        <a href="{{ url_for('export_categories_json') }}" class="button">Export Categories to JSON</a>
+    </div>
+    {% if categories_with_counts %}
         <table>
             <thead>
                 <tr>
-                    <th>Name</th>
+                    <th>
+                        <a href="{{ url_for('categories_list', sort_by='name', sort_order='asc' if sort_by == 'name' and sort_order == 'desc' else 'desc') }}">
+                            Name 
+                            {% if sort_by == 'name' %}
+                                {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
                     <th>Nicename</th>
+                    <th>
+                        <a href="{{ url_for('categories_list', sort_by='post_count', sort_order='asc' if sort_by == 'post_count' and sort_order == 'desc' else 'desc') }}">
+                            Post Count 
+                            {% if sort_by == 'post_count' %}
+                                {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
                     <th>Description</th>
                     <th>Parent</th>
                 </tr>
             </thead>
             <tbody>
-                {% for category in categories %}
+                {% for category, post_count in categories_with_counts %}
                 <tr>
-                    <td>{{ category.name }}</td>
-                    <td>{{ category.nicename }}</td>
+                    <td><a href="{{ url_for('posts_list', category=category.name) }}">{{ category.name }}</a></td>
+                    <td>{{ category.nicename if category.nicename else 'N/A' }}</td>
+                    <td>{{ post_count }}</td>
                     <td>{{ category.description if category.description else 'N/A' }}</td>
                     <td>{{ category.parent if category.parent else 'N/A' }}</td>
                 </tr>
