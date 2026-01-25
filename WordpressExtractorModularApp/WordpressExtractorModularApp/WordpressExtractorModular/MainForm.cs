@@ -19,10 +19,12 @@ namespace WordpressExtractorModular
         private TabControl? tabControlMain;
 
         // User Controls
+        private DashboardViewControl? dashboardViewControl;
         private PostsViewControl? postsViewControl;
         private AuthorsViewControl? authorsViewControl;
         private CategoriesViewControl? categoriesViewControl;
         private TagsViewControl? tagsViewControl;
+        private InternalLinksViewControl? internalLinksViewControl; // Added
         private CommentsViewControl? commentsViewControl;
         private PostMetaViewControl? postMetaViewControl;
 
@@ -74,6 +76,13 @@ namespace WordpressExtractorModular
 
 
             // Create TabPages and add UserControls
+            // Dashboard Tab
+            TabPage tabPageDashboard = new TabPage("Dashboard");
+            dashboardViewControl = new DashboardViewControl(_dataService!); // Null-forgiving for dataService
+            dashboardViewControl!.Dock = DockStyle.Fill; // Null-forgiving
+            tabPageDashboard.Controls.Add(dashboardViewControl);
+            tabControlMain!.Controls.Add(tabPageDashboard); // Null-forgiving
+
             // Posts & Pages Tab
             TabPage tabPagePosts = new TabPage("Posts & Pages");
             postsViewControl = new PostsViewControl(_dataService!); // Null-forgiving for dataService
@@ -102,6 +111,13 @@ namespace WordpressExtractorModular
             tagsViewControl!.Dock = DockStyle.Fill; // Null-forgiving
             tabPageTags.Controls.Add(tagsViewControl);
             tabControlMain.Controls.Add(tabPageTags);
+
+            // Internal Links Tab
+            TabPage tabPageInternalLinks = new TabPage("Internal Links");
+            internalLinksViewControl = new InternalLinksViewControl(_dataService!); // Null-forgiving for dataService
+            internalLinksViewControl!.Dock = DockStyle.Fill; // Null-forgiving
+            tabPageInternalLinks.Controls.Add(internalLinksViewControl);
+            tabControlMain.Controls.Add(tabPageInternalLinks);
 
             // Comments Tab
             TabPage tabPageComments = new TabPage("Comments");
@@ -133,6 +149,9 @@ namespace WordpressExtractorModular
             // Load data for the selected tab if it hasn't been loaded yet
             switch (tabControlMain.SelectedTab.Text)
             {
+                case "Dashboard":
+                    dashboardViewControl?.LoadDashboardData();
+                    break;
                 case "Posts & Pages":
                     postsViewControl?.LoadPosts(); // Null-conditional operator
                     break;
@@ -144,6 +163,9 @@ namespace WordpressExtractorModular
                     break;
                 case "Tags":
                     tagsViewControl?.LoadTags();
+                    break;
+                case "Internal Links":
+                    internalLinksViewControl?.LoadInternalLinks();
                     break;
                 case "Comments":
                     if (_selectedPostId != -1) commentsViewControl?.LoadComments(_selectedPostId);
