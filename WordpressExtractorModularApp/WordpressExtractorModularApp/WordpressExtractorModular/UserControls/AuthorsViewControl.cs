@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class AuthorsViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewAuthors;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewAuthors = null!;
 
         public AuthorsViewControl()
         {
@@ -49,7 +49,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewAuthors);
         }
 
-        private void AuthorsViewControl_Load(object sender, EventArgs e)
+        private void AuthorsViewControl_Load(object? sender, EventArgs e)
         {
             LoadAuthors();
         }
@@ -60,7 +60,7 @@ namespace WordpressExtractor.UserControls
             var authors = _dataService.GetAuthors();
             dataGridViewAuthors.DataSource = authors;
             if (dataGridViewAuthors.Columns.Contains("AuthorId"))
-                dataGridViewAuthors.Columns["AuthorId"].Visible = false; // Hide ID
+                dataGridViewAuthors.Columns["AuthorId"]!.Visible = false; // Hide ID, use null-forgiving
         }
     }
 }

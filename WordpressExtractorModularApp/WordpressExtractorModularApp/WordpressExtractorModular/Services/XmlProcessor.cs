@@ -14,9 +14,9 @@ namespace WordpressExtractor.Services
         private readonly SQLiteDataService _dataService; // To interact with the database
 
         // Caching for terms to avoid repeated DB lookups during post processing
-        private Dictionary<string, int> _categoryNicenameToTermId;
-        private Dictionary<string, int> _tagNicenameToTermId;
-        private Dictionary<string, int> _postNameIdMap; // Cache post_name to post_id for internal link resolution
+        private Dictionary<string, int> _categoryNicenameToTermId = new Dictionary<string, int>();
+        private Dictionary<string, int> _tagNicenameToTermId = new Dictionary<string, int>();
+        private Dictionary<string, int> _postNameIdMap = new Dictionary<string, int>(); // Cache post_name to post_id for internal link resolution
 
         public XmlProcessor(SQLiteDataService dataService)
         {
@@ -40,11 +40,27 @@ namespace WordpressExtractor.Services
             // Clean existing data before importing new
             _dataService.ClearAllData();
 
+            // Process Site Information
+            XElement? channelElement = doc.Root?.Element("channel");
+            if (channelElement != null)
+            {
+                string siteTitle = channelElement.Element("title")?.Value ?? "Untitled Site";
+                string siteDescription = channelElement.Element("description")?.Value ?? string.Empty;
+
+                _dataService.SaveSiteInfo(new SiteInfo { Key = "title", Value = siteTitle });
+                _dataService.SaveSiteInfo(new SiteInfo { Key = "description", Value = siteDescription });
+
+                // Additional site info extraction (e.g., active plugins if available in XML)
+                // This would be highly dependent on the WordPress export content and usually requires specific meta keys.
+                // For now, a placeholder is used, similar to the Flask app.
+                _dataService.SaveSiteInfo(new SiteInfo { Key = "active_plugins", Value = "Placeholder: Could not determine active plugins from this XML." });
+            }
+
             // Process Authors
             var authors = doc.Descendants(wp + "author")
                              .Select(x => new Author
                              {
-                                 AuthorId = int.Parse(x.Element(wp + "author_id").Value),
+                                 AuthorId = int.Parse(x.Element(wp + "author_id")?.Value ?? "0"),
                                  Login = x.Element(wp + "author_login")?.Value ?? string.Empty,
                                  Email = x.Element(wp + "author_email")?.Value ?? string.Empty,
                                  DisplayName = x.Element(wp + "author_display_name")?.Value ?? string.Empty,
@@ -57,7 +73,7 @@ namespace WordpressExtractor.Services
             var categories = doc.Descendants(wp + "category")
                                 .Select(x => new Category
                                 {
-                                    TermId = int.Parse(x.Element(wp + "term_id").Value),
+                                    TermId = int.Parse(x.Element(wp + "term_id")?.Value ?? "0"),
                                     Nicename = x.Element(wp + "category_nicename")?.Value ?? string.Empty,
                                     Parent = x.Element(wp + "category_parent")?.Value ?? string.Empty,
                                     Name = x.Element(wp + "cat_name")?.Value ?? string.Empty,
@@ -68,12 +84,21 @@ namespace WordpressExtractor.Services
 
             // Process Tags
             var tags = doc.Descendants(wp + "tag")
-                         .Select(x => new Tag
+                         .Select(x =>
                          {
-                             TermId = int.Parse(x.Element(wp + "term_id").Value),
-                             Nicename = x.Element(wp + "tag_nicename")?.Value ?? string.Empty,
-                             Name = x.Element(wp + "tag_name")?.Value ?? string.Empty,
-                             Description = x.Element(wp + "tag_description")?.Value ?? string.Empty,
+                             string? nicename = x.Element(wp + "tag_nicename")?.Value;
+                             if (string.IsNullOrEmpty(nicename))
+                             {
+                                 nicename = x.Element(wp + "tag_slug")?.Value; // Fallback to tag_slug
+                             }
+
+                             return new Tag
+                             {
+                                 TermId = int.Parse(x.Element(wp + "term_id")?.Value ?? "0"),
+                                 Nicename = nicename ?? string.Empty, // Ensure it's not null
+                                 Name = x.Element(wp + "tag_name")?.Value ?? string.Empty,
+                                 Description = x.Element(wp + "tag_description")?.Value ?? string.Empty,
+                             };
                          }).ToList();
             _dataService.SaveTags(tags);
             _tagNicenameToTermId = tags.ToDictionary(t => t.Nicename, t => t.TermId);
@@ -86,7 +111,7 @@ namespace WordpressExtractor.Services
                 var postType = item.Element(wp + "post_type")?.Value;
                 if (postType == "post" || postType == "page")
                 {
-                    var postId = int.Parse(item.Element(wp + "post_id").Value);
+                var postId = int.Parse(item.Element(wp + "post_id")?.Value ?? "0");
                     var postName = item.Element(wp + "post_name")?.Value;
                     if (!string.IsNullOrEmpty(postName))
                     {
@@ -101,19 +126,39 @@ namespace WordpressExtractor.Services
             foreach (var item in items)
             {
                 var postType = item.Element(wp + "post_type")?.Value;
-                var postId = int.Parse(item.Element(wp + "post_id").Value); // Always get post_id
+                var postId = int.Parse(item.Element(wp + "post_id")?.Value ?? "0"); // Always get post_id
 
                 if (postType == "post" || postType == "page")
                 {
+                    string? title = item.Element("title")?.Value;
+                    string? contentEncoded = item.Element(content + "encoded")?.Value;
+
+                    if (string.IsNullOrEmpty(title))
+                    {
+                        if (!string.IsNullOrEmpty(contentEncoded))
+                        {
+                            // Try to extract title from H1 or H2 tags
+                            Match match = Regex.Match(contentEncoded, "<h[12]>(.*?)</h[12]>", RegexOptions.IgnoreCase);
+                            if (match.Success)
+                            {
+                                title = match.Groups[1].Value;
+                            }
+                        }
+                        if (string.IsNullOrEmpty(title))
+                        {
+                            title = "Untitled Post";
+                        }
+                    }
+
                     var post = new Post
                     {
                         PostId = postId,
-                        Title = item.Element("title")?.Value ?? string.Empty,
+                        Title = title ?? string.Empty, // Use the extracted/default title
                         Link = item.Element("link")?.Value ?? string.Empty, // Extract Link
                         PostType = postType,
                         PostDate = ParseDateTime(item.Element(wp + "post_date")?.Value),
                         PostName = item.Element(wp + "post_name")?.Value ?? string.Empty,
-                        ContentEncoded = item.Element(content + "encoded")?.Value ?? string.Empty,
+                        ContentEncoded = contentEncoded ?? string.Empty, // Use the extracted content
                         Creator = item.Element(dc + "creator")?.Value ?? string.Empty,
                         Status = item.Element(wp + "status")?.Value ?? string.Empty,
                         // Other fields as needed
@@ -164,7 +209,7 @@ namespace WordpressExtractor.Services
                     {
                         var comment = new Comment
                         {
-                            CommentId = int.Parse(commentElement.Element(wp + "comment_id").Value),
+                            CommentId = int.Parse(commentElement.Element(wp + "comment_id")?.Value ?? "0"),
                             PostId = post.PostId,
                             Author = commentElement.Element(wp + "comment_author")?.Value ?? string.Empty,
                             AuthorEmail = commentElement.Element(wp + "comment_author_email")?.Value ?? string.Empty,
@@ -198,7 +243,8 @@ namespace WordpressExtractor.Services
             }
         }
 
-        private DateTime? ParseDateTime(string dateTimeString)
+        #pragma warning disable CS8603 // Possible null reference return.
+        private DateTime? ParseDateTime(string? dateTimeString)
         {
             if (DateTime.TryParse(dateTimeString, out DateTime result))
             {
@@ -206,11 +252,12 @@ namespace WordpressExtractor.Services
             }
             return null;
         }
+        #pragma warning restore CS8603 // Possible null reference return.
 
         private string GetCleanedHtmlFromFile(string postName, string postType)
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string cleanedContent = null;
+            string? cleanedContent = null;
 
             // Adjust paths relative to the executable for the existing cleaned HTML files
             string cleanedPostsDir = Path.Combine(baseDir, "..\\..\\..\\..\\all_blog_posts");
@@ -242,11 +289,13 @@ namespace WordpressExtractor.Services
             return cleanedContent;
         }
 
+        #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+        #pragma warning disable CS8604 // Possible null reference argument for parameter 'value' in 'bool Dictionary<TKey, TValue>.ContainsKey(TKey value)'.
         private void ExtractAndSaveInternalLinks(int sourcePostId, string htmlContent)
         {
             if (string.IsNullOrWhiteSpace(htmlContent)) return;
 
-            var htmlDoc = new HtmlDocument();
+            var htmlDoc = new HtmlAgilityPack.HtmlDocument();
             htmlDoc.LoadHtml(htmlContent);
 
             foreach (var link in htmlDoc.DocumentNode.SelectNodes("//a[@href]") ?? Enumerable.Empty<HtmlNode>())
@@ -263,10 +312,11 @@ namespace WordpressExtractor.Services
                     {
                         // Assuming base_site_url is known or can be extracted from XML for more robust check
                         // For now, let's just check against known post_names (slugs)
-                        string slug = uri.Segments.LastOrDefault()?.Replace(".html", string.Empty);
-                        if (!string.IsNullOrEmpty(slug) && _postNameIdMap.ContainsKey(slug))
+                        string? slug = uri.Segments.LastOrDefault();
+                        string finalSlug = slug?.Replace(".html", string.Empty) ?? string.Empty; // Handle null slug
+                        if (!string.IsNullOrEmpty(finalSlug) && _postNameIdMap.ContainsKey(finalSlug))
                         {
-                            int targetPostId = _postNameIdMap[slug];
+                            int targetPostId = _postNameIdMap[finalSlug];
                             _dataService.SaveInternalLink(new InternalLink
                             {
                                 SourcePostId = sourcePostId,
@@ -293,6 +343,7 @@ namespace WordpressExtractor.Services
                 }
             }
         }
+        #pragma warning restore CS8604 // Possible null reference argument for parameter 'value' in 'bool Dictionary<TKey, TValue>.ContainsKey(TKey value)'.
+        #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
     }
 }
-

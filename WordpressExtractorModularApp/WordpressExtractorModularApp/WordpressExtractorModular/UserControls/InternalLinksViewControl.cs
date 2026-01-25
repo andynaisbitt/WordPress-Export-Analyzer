@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class InternalLinksViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewInternalLinks;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewInternalLinks = null!;
 
         public InternalLinksViewControl()
         {
@@ -49,7 +49,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewInternalLinks);
         }
 
-        private void InternalLinksViewControl_Load(object sender, EventArgs e)
+        private void InternalLinksViewControl_Load(object? sender, EventArgs e) // Made sender nullable
         {
             LoadInternalLinks();
         }
@@ -60,11 +60,11 @@ namespace WordpressExtractor.UserControls
             var internalLinks = _dataService.GetInternalLinks();
             dataGridViewInternalLinks.DataSource = internalLinks;
             if (dataGridViewInternalLinks.Columns.Contains("Id"))
-                dataGridViewInternalLinks.Columns["Id"].Visible = false;
+                dataGridViewInternalLinks.Columns["Id"]!.Visible = false;
             if (dataGridViewInternalLinks.Columns.Contains("SourcePostId"))
-                dataGridViewInternalLinks.Columns["SourcePostId"].Visible = false;
+                dataGridViewInternalLinks.Columns["SourcePostId"]!.Visible = false;
             if (dataGridViewInternalLinks.Columns.Contains("TargetPostId"))
-                dataGridViewInternalLinks.Columns["TargetPostId"].Visible = false;
+                dataGridViewInternalLinks.Columns["TargetPostId"]!.Visible = false;
         }
     }
 }

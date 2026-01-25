@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class TagsViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewTags;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewTags = null!;
 
         public TagsViewControl()
         {
@@ -49,7 +49,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewTags);
         }
 
-        private void TagsViewControl_Load(object sender, EventArgs e)
+        private void TagsViewControl_Load(object? sender, EventArgs e)
         {
             LoadTags();
         }
@@ -60,7 +60,7 @@ namespace WordpressExtractor.UserControls
             var tags = _dataService.GetTags();
             dataGridViewTags.DataSource = tags;
             if (dataGridViewTags.Columns.Contains("TermId"))
-                dataGridViewTags.Columns["TermId"].Visible = false; // Hide ID
+                dataGridViewTags.Columns["TermId"]!.Visible = false; // Hide ID, use null-forgiving
         }
     }
 }

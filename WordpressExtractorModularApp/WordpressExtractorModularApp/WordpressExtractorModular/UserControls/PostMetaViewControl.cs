@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class PostMetaViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewPostMeta;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewPostMeta = null!;
         private int _currentPostId = -1;
 
         public PostMetaViewControl()
@@ -50,7 +50,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewPostMeta);
         }
 
-        private void PostMetaViewControl_Load(object sender, EventArgs e)
+        private void PostMetaViewControl_Load(object? sender, EventArgs e) // Made sender nullable
         {
             // Load meta only if a post is already selected
             if (_currentPostId != -1)
@@ -66,9 +66,9 @@ namespace WordpressExtractor.UserControls
             var postMeta = _dataService.GetPostMetaByPostId(postId);
             dataGridViewPostMeta.DataSource = postMeta;
             if (dataGridViewPostMeta.Columns.Contains("MetaId"))
-                dataGridViewPostMeta.Columns["MetaId"].Visible = false;
+                dataGridViewPostMeta.Columns["MetaId"]!.Visible = false;
             if (dataGridViewPostMeta.Columns.Contains("PostId"))
-                dataGridViewPostMeta.Columns["PostId"].Visible = false;
+                dataGridViewPostMeta.Columns["PostId"]!.Visible = false;
         }
     }
 }

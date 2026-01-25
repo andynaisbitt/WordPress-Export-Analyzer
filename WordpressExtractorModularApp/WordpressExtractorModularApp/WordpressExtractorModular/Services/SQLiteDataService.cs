@@ -16,11 +16,11 @@ namespace WordpressExtractor.Services
             _databasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\", databaseName);
             _databasePath = Path.GetFullPath(_databasePath);
             
-            // Ensure the database file exists or is created
+            // Ensure the database file exists or is created by attempting to open a connection.
+            // Microsoft.Data.Sqlite will create the file if it doesn't exist.
             if (!File.Exists(_databasePath))
             {
-                // If the file doesn't exist, create an empty one and initialize schema
-                SqliteConnection.CreateFile(_databasePath);
+                // Only initialize schema if the file was just created
                 InitializeDatabaseSchema();
             }
             else
@@ -175,6 +175,10 @@ namespace WordpressExtractor.Services
                             anchor_text TEXT,
                             FOREIGN KEY (source_post_id) REFERENCES posts(post_id),
                             FOREIGN KEY (target_post_id) REFERENCES posts(post_id)
+                        );
+                        CREATE TABLE IF NOT EXISTS site_info (
+                            key TEXT PRIMARY KEY,
+                            value TEXT
                         );";
                     command.ExecuteNonQuery();
                     transaction.Commit();
@@ -514,6 +518,45 @@ namespace WordpressExtractor.Services
             }
         }
 
+        public void SaveSiteInfo(SiteInfo info)
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        INSERT OR REPLACE INTO site_info (key, value)
+                        VALUES (@Key, @Value)";
+                    command.Parameters.AddWithValue("@Key", info.Key);
+                    command.Parameters.AddWithValue("@Value", info.Value);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public Dictionary<string, string> GetSiteInfo()
+        {
+            var siteInfo = new Dictionary<string, string>();
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT key, value FROM site_info";
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            siteInfo[reader.GetString(0)] = reader.GetString(1);
+                        }
+                    }
+                }
+            }
+            return siteInfo;
+        }
+
         // --- Get Methods ---
         public List<Post> GetPosts(string searchTerm = null)
         {
@@ -555,8 +598,10 @@ namespace WordpressExtractor.Services
             return posts;
         }
 
-        public Post GetPostById(int postId)
+        public Post? GetPostById(int postId)
         {
+#pragma warning disable CS8603 // Possible null reference return.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             using (var connection = GetConnection())
             {
                 connection.Open();
@@ -586,7 +631,9 @@ namespace WordpressExtractor.Services
                     }
                 }
             }
-            return null; // Return null if post not found
+            return (Post?)null!; // Return null if post not found
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8603 // Possible null reference return.
         }
 
         public List<Author> GetAuthors()

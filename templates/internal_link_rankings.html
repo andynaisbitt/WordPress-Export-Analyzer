@@ -3,16 +3,50 @@
 {% block content %}
     <h2>Internal Link Rankings</h2>
     <p>Posts and pages ranked by the number of internal backlinks they receive.</p>
+
+    <div class="export-buttons">
+        <a href="{{ url_for('export_internal_links_csv') }}" class="button">Export Internal Links to CSV</a>
+        <a href="{{ url_for('export_internal_links_json') }}" class="button">Export Internal Links to JSON</a>
+    </div>
+
     {% if ranked_posts %}
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>Rank</th>
-                        <th>Title</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Internal Backlinks</th>
+                        <th>
+                            <a href="{{ url_for('internal_link_rankings', sort_by='title', sort_order='asc' if sort_by == 'title' and sort_order == 'desc' else 'desc', page=page) }}">
+                                Title 
+                                {% if sort_by == 'title' %}
+                                    {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('internal_link_rankings', sort_by='type', sort_order='asc' if sort_by == 'type' and sort_order == 'desc' else 'desc', page=page) }}">
+                                Type 
+                                {% if sort_by == 'type' %}
+                                    {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('internal_link_rankings', sort_by='status', sort_order='asc' if sort_by == 'status' and sort_order == 'desc' else 'desc', page=page) }}">
+                                Status 
+                                {% if sort_by == 'status' %}
+                                    {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('internal_link_rankings', sort_by='internal_backlink_count', sort_order='asc' if sort_by == 'internal_backlink_count' and sort_order == 'desc' else 'desc', page=page) }}">
+                                Internal Backlinks 
+                                {% if sort_by == 'internal_backlink_count' %}
+                                    {% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,7 +70,7 @@
         {% if total_pages and total_pages > 1 %}
             <span>Page {{ page }} of {{ total_pages }}.</span>
             
-            <a href="{{ url_for(request.endpoint, page=page-1) if page > 1 else '#' }}"
+            <a href="{{ url_for(request.endpoint, page=page-1, sort_by=sort_by, sort_order=sort_order) if page > 1 else '#' }}"
                class="button {% if page <= 1 %}disabled{% endif %}">
                 &laquo; Previous
             </a>
@@ -45,14 +79,14 @@
             {% set end_page = [total_pages, page + 2] | min %}
 
             {% if start_page > 1 %}
-                <a href="{{ url_for(request.endpoint, page=1) }}" class="button">1</a>
+                <a href="{{ url_for(request.endpoint, page=1, sort_by=sort_by, sort_order=sort_order) }}" class="button">1</a>
                 {% if start_page > 2 %}
                     <span class="ellipsis">…</span>
                 {% endif %}
             {% endif %}
 
             {% for p in range(start_page, end_page + 1) %}
-                <a href="{{ url_for(request.endpoint, page=p) }}"
+                <a href="{{ url_for(request.endpoint, page=p, sort_by=sort_by, sort_order=sort_order) }}"
                    class="button {% if p == page %}active{% endif %}">{{ p }}</a>
             {% endfor %}
 
@@ -60,10 +94,10 @@
                 {% if end_page < total_pages - 1 %}
                     <span class="ellipsis">…</span>
                 {% endif %}
-                <a href="{{ url_for(request.endpoint, page=total_pages) }}" class="button">{{ total_pages }}</a>
+                <a href="{{ url_for(request.endpoint, page=total_pages, sort_by=sort_by, sort_order=sort_order) }}" class="button">Last</a>
             {% endif %}
 
-            <a href="{{ url_for(request.endpoint, page=page+1) if page < total_pages else '#' }}"
+            <a href="{{ url_for(request.endpoint, page=page+1, sort_by=sort_by, sort_order=sort_order) if page < total_pages else '#' }}"
                class="button {% if page >= total_pages %}disabled{% endif %}">
                 Next &raquo;
             </a>

@@ -2,25 +2,83 @@
 {% block title %}External Links Audit - WordPress Extractor{% endblock %}
 {% block content %}
     <h2>External Links Audit</h2>
-    <p>A list of external links found within your WordPress content.</p>
-    {% if external_links %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Source Post Title</th>
-                    <th>Linked URL</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for link in external_links %}
-                <tr>
-                    <td><a href="{{ url_for('post_detail', post_id=link.source_post_id) }}">{{ link.source_post_title }}</a></td>
-                    <td><a href="{{ link.linked_url }}" target="_blank" rel="noopener noreferrer">{{ link.linked_url }}</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <p>A list of external links found within your WordPress content, grouped by their source post.</p>
+    
+    <div class="export-buttons">
+        <a href="{{ url_for('export_external_links_csv') }}" class="button">Export External Links to CSV</a>
+        <a href="{{ url_for('export_external_links_json') }}" class="button">Export External Links to JSON</a>
+    </div>
+
+    <div class="sort-controls">
+        Sort Groups by:
+        <a href="{{ url_for('external_links_audit', sort_by='post_title', sort_order='asc' if sort_by == 'post_title' and sort_order == 'desc' else 'desc', page=page) }}" class="button">
+            Source Post Title {% if sort_by == 'post_title' %}{% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+        </a>
+        <a href="{{ url_for('external_links_audit', sort_by='link_count', sort_order='asc' if sort_by == 'link_count' and sort_order == 'desc' else 'desc', page=page) }}" class="button">
+            Number of External Links {% if sort_by == 'link_count' %}{% if sort_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+        </a>
+    </div>
+    
+    {% if grouped_links %}
+        {% for (post_id, post_title, internal_backlink_count), links in grouped_links %}
+            <div class="external-link-group">
+                <h3>Source Post: <a href="{{ url_for('post_detail', post_id=post_id) }}">{{ post_title or "Untitled Post" }}</a></h3>
+                <p>Internal Backlinks to this post: {{ internal_backlink_count }}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Linked URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for link_obj in links %}
+                        <tr>
+                            <td><a href="{{ link_obj.linked_url }}" target="_blank" rel="noopener noreferrer">{{ link_obj.linked_url }}</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
     {% else %}
         <p>No external links found. Please ensure an XML file has been uploaded and processed.</p>
     {% endif %}
+
+    <div class="pagination">
+        {% if total_pages and total_pages > 1 %}
+            <span>Page {{ page }} of {{ total_pages }}.</span>
+            
+            <a href="{{ url_for(request.endpoint, page=page-1, sort_by=sort_by, sort_order=sort_order) if page > 1 else '#' }}"
+               class="button {% if page <= 1 %}disabled{% endif %}">
+                &laquo; Previous
+            </a>
+
+            {% set start_page = [1, page - 2] | max %}
+            {% set end_page = [total_pages, page + 2] | min %}
+
+            {% if start_page > 1 %}
+                <a href="{{ url_for(request.endpoint, page=1, sort_by=sort_by, sort_order=sort_order) }}" class="button">1</a>
+                {% if start_page > 2 %}
+                    <span class="ellipsis">…</span>
+                {% endif %}
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+                <a href="{{ url_for(request.endpoint, page=p, sort_by=sort_by, sort_order=sort_order) }}"
+                   class="button {% if p == page %}active{% endif %}">{{ p }}</a>
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+                {% if end_page < total_pages - 1 %}
+                    <span class="ellipsis">…</span>
+                {% endif %}
+                <a href="{{ url_for(request.endpoint, page=total_pages, sort_by=sort_by, sort_order=sort_order) }}" class="button">Last</a>
+            {% endif %}
+
+            <a href="{{ url_for(request.endpoint, page=page+1, sort_by=sort_by, sort_order=sort_order) if page < total_pages else '#' }}"
+               class="button {% if page >= total_pages %}disabled{% endif %}">
+                Next &raquo;
+            </a>
+        {% endif %}
+    </div>
 {% endblock %}

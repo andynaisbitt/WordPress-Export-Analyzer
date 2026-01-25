@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class CategoriesViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewCategories;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewCategories = null!;
 
         public CategoriesViewControl()
         {
@@ -49,7 +49,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewCategories);
         }
 
-        private void CategoriesViewControl_Load(object sender, EventArgs e)
+        private void CategoriesViewControl_Load(object? sender, EventArgs e)
         {
             LoadCategories();
         }
@@ -60,7 +60,7 @@ namespace WordpressExtractor.UserControls
             var categories = _dataService.GetCategories();
             dataGridViewCategories.DataSource = categories;
             if (dataGridViewCategories.Columns.Contains("TermId"))
-                dataGridViewCategories.Columns["TermId"].Visible = false; // Hide ID
+                dataGridViewCategories.Columns["TermId"]!.Visible = false; // Hide ID, use null-forgiving
         }
     }
 }

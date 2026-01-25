@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class CommentsViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewComments;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewComments = null!;
         private int _currentPostId = -1;
 
         public CommentsViewControl()
@@ -50,7 +50,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewComments);
         }
 
-        private void CommentsViewControl_Load(object sender, EventArgs e)
+        private void CommentsViewControl_Load(object? sender, EventArgs e) // Made sender nullable
         {
             // Load comments only if a post is already selected
             if (_currentPostId != -1)
@@ -66,17 +66,17 @@ namespace WordpressExtractor.UserControls
             var comments = _dataService.GetCommentsByPostId(postId);
             dataGridViewComments.DataSource = comments;
             if (dataGridViewComments.Columns.Contains("CommentId"))
-                dataGridViewComments.Columns["CommentId"].Visible = false;
+                dataGridViewComments.Columns["CommentId"]!.Visible = false;
             if (dataGridViewComments.Columns.Contains("PostId"))
-                dataGridViewComments.Columns["PostId"].Visible = false;
+                dataGridViewComments.Columns["PostId"]!.Visible = false;
             if (dataGridViewComments.Columns.Contains("AuthorIp"))
-                dataGridViewComments.Columns["AuthorIp"].Visible = false;
+                dataGridViewComments.Columns["AuthorIp"]!.Visible = false;
             if (dataGridViewComments.Columns.Contains("AuthorEmail"))
-                dataGridViewComments.Columns["AuthorEmail"].Visible = false;
+                dataGridViewComments.Columns["AuthorEmail"]!.Visible = false;
             if (dataGridViewComments.Columns.Contains("AuthorUrl"))
-                dataGridViewComments.Columns["AuthorUrl"].Visible = false;
+                dataGridViewComments.Columns["AuthorUrl"]!.Visible = false;
             if (dataGridViewComments.Columns.Contains("UserId"))
-                dataGridViewComments.Columns["UserId"].Visible = false;
+                dataGridViewComments.Columns["UserId"]!.Visible = false;
         }
     }
 }

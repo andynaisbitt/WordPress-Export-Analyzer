@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from sqlalchemy.orm import sessionmaker
+from collections import defaultdict
 from sqlalchemy import or_, func
 from src.models import Base, create_database, Post, Author, Category, Tag, ExternalLink, PostCategory, PostTag, PostMeta, Comment, SiteInfo
 from src.wordpress_xml_parser import parse_wordpress_xml
@@ -123,7 +124,7 @@ def pages_list():
     pages = query.order_by(Post.post_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
     total_pages = math.ceil(total / per_page) if total > 0 else 1
     
-    return render_template('pages.html', posts=pages, page=page, total_pages=total_pages, search_query=search_query)
+    return render_template('pages.html', posts=pages, page=page, total_pages=total_pages, search_query=search_query, post_type_filter=post_type_filter)
 
 
 @app.route('/post/<int:post_id>')
@@ -241,24 +242,82 @@ def internal_link_rankings():
     session = request.session
     
     page = request.args.get('page', 1, type=int)
-    per_page = 20 # Same as for posts/pages lists
+    per_page = 20
+    sort_by = request.args.get('sort_by', 'internal_backlink_count')
+    sort_order = request.args.get('sort_order', 'desc')
 
     query = session.query(Post).filter(Post.post_type.in_(['post', 'page']))
 
+    if sort_by == 'title':
+        if sort_order == 'asc':
+            query = query.order_by(Post.title.asc())
+        else:
+            query = query.order_by(Post.title.desc())
+    elif sort_by == 'type':
+        if sort_order == 'asc':
+            query = query.order_by(Post.post_type.asc())
+        else:
+            query = query.order_by(Post.post_type.desc())
+    elif sort_by == 'status':
+        if sort_order == 'asc':
+            query = query.order_by(Post.status.asc())
+        else:
+            query = query.order_by(Post.status.desc())
+    elif sort_by == 'internal_backlink_count':
+        if sort_order == 'asc':
+            query = query.order_by(Post.internal_backlink_count.asc())
+        else:
+            query = query.order_by(Post.internal_backlink_count.desc())
+            
     total = query.count()
-    ranked_posts = query.order_by(Post.internal_backlink_count.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    ranked_posts = query.offset((page - 1) * per_page).limit(per_page).all()
     total_pages = math.ceil(total / per_page) if total > 0 else 1
 
     return render_template('internal_link_rankings.html', 
                            ranked_posts=ranked_posts,
                            page=page,
-                           total_pages=total_pages)
+                           total_pages=total_pages,
+                           sort_by=sort_by,
+                           sort_order=sort_order)
 
 @app.route('/external_links_audit')
 def external_links_audit():
     session = request.session
-    external_links = session.query(ExternalLink).order_by(ExternalLink.source_post_title).all()
-    return render_template('external_links_audit.html', external_links=external_links)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    sort_by = request.args.get('sort_by', 'post_title') # Default sort by post_title
+    sort_order = request.args.get('sort_order', 'asc') # Default sort order ascending
+
+    # Fetch all links and their source post data for the current page
+    query = session.query(ExternalLink, Post.post_id, Post.title, Post.internal_backlink_count).join(Post, ExternalLink.source_post_id == Post.post_id)
+    
+    # Order for pagination, initially by title for consistency
+    query = query.order_by(Post.title.asc(), ExternalLink.linked_url.asc())
+
+    total = query.count()
+    paginated_links_data = query.offset((page - 1) * per_page).limit(per_page).all()
+    total_pages = math.ceil(total / per_page) if total > 0 else 1
+
+    # Group links by source post
+    grouped_links_raw = defaultdict(list)
+    for link, post_id, post_title, internal_backlink_count in paginated_links_data:
+        grouped_links_raw[(post_id, post_title, internal_backlink_count)].append(link)
+
+    # Convert to list of (key, value) pairs and sort the groups
+    if sort_by == 'post_title':
+        grouped_links_sorted = sorted(grouped_links_raw.items(), key=lambda x: x[0][1], reverse=(sort_order == 'desc'))
+    elif sort_by == 'link_count':
+        grouped_links_sorted = sorted(grouped_links_raw.items(), key=lambda x: len(x[1]), reverse=(sort_order == 'desc'))
+    else: # Default to post_title sort
+        grouped_links_sorted = sorted(grouped_links_raw.items(), key=lambda x: x[0][1], reverse=(sort_order == 'desc'))
+
+    return render_template('external_links_audit.html', 
+                           grouped_links=grouped_links_sorted, # Pass sorted list of (key, value)
+                           page=page,
+                           total_pages=total_pages,
+                           sort_by=sort_by,
+                           sort_order=sort_order)
 
 @app.route('/export/posts/csv')
 def export_posts_csv():
@@ -465,6 +524,96 @@ def export_categories_json():
     response.headers["Content-type"] = "application/json"
     return response
 
+@app.route('/export/internal_links/csv')
+def export_internal_links_csv():
+    session = request.session
+    si = StringIO()
+    cw = csv.writer(si)
+
+    internal_links = session.query(Post).filter(Post.post_type.in_(['post', 'page'])).order_by(Post.internal_backlink_count.desc()).all()
+
+    cw.writerow([
+        'post_id', 'title', 'post_type', 'status', 'internal_backlink_count'
+    ])
+
+    for post in internal_links:
+        cw.writerow([
+            post.post_id,
+            post.title,
+            post.post_type,
+            post.status,
+            post.internal_backlink_count
+        ])
+
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=wordpress_internal_links.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
+@app.route('/export/internal_links/json')
+def export_internal_links_json():
+    session = request.session
+    internal_links = session.query(Post).filter(Post.post_type.in_(['post', 'page'])).order_by(Post.internal_backlink_count.desc()).all()
+    
+    links_data = []
+    for post in internal_links:
+        links_data.append({
+            'post_id': post.post_id,
+            'title': post.title,
+            'post_type': post.post_type,
+            'status': post.status,
+            'internal_backlink_count': post.internal_backlink_count
+        })
+    
+    response = make_response(json.dumps(links_data, indent=4))
+    response.headers["Content-Disposition"] = "attachment; filename=wordpress_internal_links.json"
+    response.headers["Content-type"] = "application/json"
+    return response
+
+@app.route('/export/external_links/csv')
+def export_external_links_csv():
+    session = request.session
+    si = StringIO()
+    cw = csv.writer(si)
+
+    # Query all external links with their source post titles and IDs
+    export_data = session.query(ExternalLink, Post.title).join(Post, ExternalLink.source_post_id == Post.post_id).order_by(Post.title.asc(), ExternalLink.linked_url.asc()).all()
+
+    cw.writerow([
+        'source_post_id', 'source_post_title', 'linked_url'
+    ])
+
+    for link, post_title in export_data:
+        cw.writerow([
+            link.source_post_id,
+            post_title,
+            link.linked_url
+        ])
+
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=wordpress_external_links.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
+@app.route('/export/external_links/json')
+def export_external_links_json():
+    session = request.session
+    
+    export_data = session.query(ExternalLink, Post.title).join(Post, ExternalLink.source_post_id == Post.post_id).order_by(Post.title.asc(), ExternalLink.linked_url.asc()).all()
+    
+    links_data = []
+    for link, post_title in export_data:
+        links_data.append({
+            'source_post_id': link.source_post_id,
+            'source_post_title': post_title,
+            'linked_url': link.linked_url
+        })
+    
+    response = make_response(json.dumps(links_data, indent=4))
+    response.headers["Content-Disposition"] = "attachment; filename=wordpress_external_links.json"
+    response.headers["Content-type"] = "application/json"
+    return response
+
 def get_site_info():
     session = Session()
     site_info = {}
@@ -477,8 +626,49 @@ def get_site_info():
 
 @app.route('/analysis')
 def analysis():
+    session = request.session
+    
     site_info = get_site_info()
-    return render_template('analysis.html', site_info=site_info)
+
+    # Dashboard-like stats
+    total_posts = session.query(Post).filter_by(post_type='post').count()
+    total_pages = session.query(Post).filter_by(post_type='page').count()
+    total_authors = session.query(Author).count()
+    total_categories = session.query(Category).count()
+    total_tags = session.query(Tag).count()
+    total_external_links = session.query(ExternalLink).count()
+    total_comments = session.query(func.sum(Post.comment_count)).filter(Post.post_type.in_(['post', 'page'])).scalar() or 0
+    total_attachments = session.query(Post).filter_by(post_type='attachment').count()
+
+    # Posts by Status
+    posts_by_status = session.query(Post.status, func.count(Post.status)).filter_by(post_type='post').group_by(Post.status).all()
+    pages_by_status = session.query(Post.status, func.count(Post.status)).filter_by(post_type='page').group_by(Post.status).all()
+
+    # Top Authors by Post Count
+    top_authors = session.query(Author.display_name, func.count(Post.post_id)).join(Post, Author.login == Post.creator).filter(Post.post_type == 'post').group_by(Author.display_name).order_by(func.count(Post.post_id).desc()).limit(5).all()
+
+    # Top Categories by Post Count
+    top_categories = session.query(Category.name, func.count(PostCategory.post_id)).join(PostCategory).group_by(Category.name).order_by(func.count(PostCategory.post_id).desc()).limit(5).all()
+
+    # Top Tags by Post Count
+    top_tags = session.query(Tag.name, func.count(PostTag.post_id)).join(PostTag).group_by(Tag.name).order_by(func.count(PostTag.post_id).desc()).limit(5).all()
+
+
+    return render_template('analysis.html', 
+                           site_info=site_info,
+                           total_posts=total_posts,
+                           total_pages=total_pages,
+                           total_authors=total_authors,
+                           total_categories=total_categories,
+                           total_tags=total_tags,
+                           total_external_links=total_external_links,
+                           total_comments=total_comments,
+                           total_attachments=total_attachments,
+                           posts_by_status=posts_by_status,
+                           pages_by_status=pages_by_status,
+                           top_authors=top_authors,
+                           top_categories=top_categories,
+                           top_tags=top_tags)
 
 if __name__ == '__main__':
     app.run(debug=True)

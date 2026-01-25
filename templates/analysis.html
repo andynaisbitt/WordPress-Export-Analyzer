@@ -1,10 +1,118 @@
 {% extends 'base.html' %}
-{% block title %}Blog Post Analysis - WordPress Extractor{% endblock %}
+{% block title %}Site Analysis - WordPress Extractor{% endblock %}
 {% block content %}
-    <h2>Site Information</h2>
-    <p><strong>Site Title:</strong> {{ site_info.get('title', 'N/A') }}</p>
-    <p><strong>Site Description:</strong> {{ site_info.get('description', 'N/A') }}</p>
-    <p><strong>Active Plugins:</strong> {{ site_info.get('active_plugins', 'N/A') }}</p>
+    <h2>Site Analysis Overview</h2>
 
-    <!-- Future analysis features will go here -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Site Title</h3>
+            <p>{{ site_info.get('title', 'N/A') }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Site Description</h3>
+            <p>{{ site_info.get('description', 'N/A') }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Active Plugins</h3>
+            <p>{{ site_info.get('active_plugins', 'N/A') }}</p>
+        </div>
+    </div>
+
+    <h3>General Statistics</h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Posts</h3>
+            <p>{{ total_posts }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Pages</h3>
+            <p>{{ total_pages }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Authors</h3>
+            <p>{{ total_authors }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Categories</h3>
+            <p>{{ total_categories }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Tags</h3>
+            <p>{{ total_tags }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total External Links</h3>
+            <p>{{ total_external_links }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Comments</h3>
+            <p>{{ total_comments }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Attachments</h3>
+            <p>{{ total_attachments }}</p>
+        </div>
+    </div>
+
+    <div class="analysis-section">
+        <h3>Content Status Breakdown</h3>
+        <div class="analysis-cards-grid">
+            <div class="analysis-card">
+                <h4>Posts by Status</h4>
+                <ul>
+                    {% for status, count in posts_by_status %}
+                        <li>{{ status.capitalize() }}: {{ count }}</li>
+                    {% else %}
+                        <li>No post status data.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="analysis-card">
+                <h4>Pages by Status</h4>
+                <ul>
+                    {% for status, count in pages_by_status %}
+                        <li>{{ status.capitalize() }}: {{ count }}</li>
+                    {% else %}
+                        <li>No page status data.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="analysis-section">
+        <h3>Top Contributors</h3>
+        <div class="analysis-cards-grid">
+            <div class="analysis-card">
+                <h4>Top 5 Authors by Posts</h4>
+                <ul>
+                    {% for author_name, count in top_authors %}
+                        <li>{{ author_name }}: {{ count }}</li>
+                    {% else %}
+                        <li>No author data.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="analysis-card">
+                <h4>Top 5 Categories by Posts</h4>
+                <ul>
+                    {% for category_name, count in top_categories %}
+                        <li>{{ category_name }}: {{ count }}</li>
+                    {% else %}
+                        <li>No category data.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="analysis-card">
+                <h4>Top 5 Tags by Posts</h4>
+                <ul>
+                    {% for tag_name, count in top_tags %}
+                        <li>{{ tag_name }}: {{ count }}</li>
+                    {% else %}
+                        <li>No tag data.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
 {% endblock %}

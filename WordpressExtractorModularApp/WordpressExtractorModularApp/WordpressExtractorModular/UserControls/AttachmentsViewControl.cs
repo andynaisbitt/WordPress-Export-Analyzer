@@ -8,8 +8,8 @@ namespace WordpressExtractor.UserControls
 {
     public partial class AttachmentsViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        private DataGridView dataGridViewAttachments;
+        private SQLiteDataService? _dataService;
+        private DataGridView dataGridViewAttachments = null!;
 
         public AttachmentsViewControl()
         {
@@ -49,7 +49,7 @@ namespace WordpressExtractor.UserControls
             this.Controls.Add(dataGridViewAttachments);
         }
 
-        private void AttachmentsViewControl_Load(object sender, EventArgs e)
+        private void AttachmentsViewControl_Load(object? sender, EventArgs e) // Made sender nullable
         {
             LoadAttachments();
         }
@@ -60,13 +60,13 @@ namespace WordpressExtractor.UserControls
             var attachments = _dataService.GetAttachments();
             dataGridViewAttachments.DataSource = attachments;
             if (dataGridViewAttachments.Columns.Contains("PostId"))
-                dataGridViewAttachments.Columns["PostId"].Visible = false;
+                dataGridViewAttachments.Columns["PostId"]!.Visible = false;
             if (dataGridViewAttachments.Columns.Contains("ParentId"))
-                dataGridViewAttachments.Columns["ParentId"].Visible = false;
+                dataGridViewAttachments.Columns["ParentId"]!.Visible = false;
             if (dataGridViewAttachments.Columns.Contains("Description"))
-                dataGridViewAttachments.Columns["Description"].Visible = false;
+                dataGridViewAttachments.Columns["Description"]!.Visible = false;
             if (dataGridViewAttachments.Columns.Contains("Content"))
-                dataGridViewAttachments.Columns["Content"].Visible = false;
+                dataGridViewAttachments.Columns["Content"]!.Visible = false;
         }
     }
 }

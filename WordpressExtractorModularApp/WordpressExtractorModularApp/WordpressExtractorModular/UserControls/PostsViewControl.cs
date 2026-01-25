@@ -10,17 +10,17 @@ namespace WordpressExtractor.UserControls
 {
     public partial class PostsViewControl : UserControl
     {
-        private SQLiteDataService _dataService;
-        public event EventHandler<int> PostSelected; // Event to notify parent form about selected post
+        private SQLiteDataService? _dataService;
+        public event EventHandler<int>? PostSelected; // Event to notify parent form about selected post
 
         // Declare controls
-        private SplitContainer splitContainerPosts;
-        private Panel panelPostSearch;
-        private TextBox searchTextBox;
-        private Button searchButton;
-        private Button exportMarkdownButton;
-        private DataGridView dataGridViewPosts;
-        private WebBrowser webBrowserPostContent;
+        private SplitContainer splitContainerPosts = null!;
+        private Panel panelPostSearch = null!;
+        private TextBox searchTextBox = null!;
+        private Button searchButton = null!;
+        private Button exportMarkdownButton = null!;
+        private DataGridView dataGridViewPosts = null!;
+        private WebBrowser webBrowserPostContent = null!;
 
         public PostsViewControl()
         {
@@ -108,7 +108,7 @@ namespace WordpressExtractor.UserControls
             splitContainerPosts.Panel2.Controls.Add(webBrowserPostContent);
         }
 
-        private void PostsViewControl_Load(object sender, EventArgs e)
+        private void PostsViewControl_Load(object? sender, EventArgs e) // Made sender nullable
         {
             LoadPosts();
         }
@@ -120,24 +120,24 @@ namespace WordpressExtractor.UserControls
             dataGridViewPosts.DataSource = posts;
             // Optionally hide columns that are not relevant for initial display or too long
             if (dataGridViewPosts.Columns.Contains("CleanedHtmlSource"))
-                dataGridViewPosts.Columns["CleanedHtmlSource"].Visible = false;
+                dataGridViewPosts.Columns["CleanedHtmlSource"]!.Visible = false;
             if (dataGridViewPosts.Columns.Contains("ContentEncoded"))
-                dataGridViewPosts.Columns["ContentEncoded"].Visible = false;
+                dataGridViewPosts.Columns["ContentEncoded"]!.Visible = false;
             if (dataGridViewPosts.Columns.Contains("PostName"))
-                dataGridViewPosts.Columns["PostName"].Visible = false;
+                dataGridViewPosts.Columns["PostName"]!.Visible = false;
             if (dataGridViewPosts.Columns.Contains("PostId"))
-                dataGridViewPosts.Columns["PostId"].Visible = false; // Hide ID column
+                dataGridViewPosts.Columns["PostId"]!.Visible = false; // Hide ID column
             if (dataGridViewPosts.Columns.Contains("Comments"))
-                dataGridViewPosts.Columns["Comments"].Visible = false; // Hide navigation property
+                dataGridViewPosts.Columns["Comments"]!.Visible = false; // Hide navigation property
             if (dataGridViewPosts.Columns.Contains("PostMeta"))
-                dataGridViewPosts.Columns["PostMeta"].Visible = false; // Hide navigation property
+                dataGridViewPosts.Columns["PostMeta"]!.Visible = false; // Hide navigation property
             if (dataGridViewPosts.Columns.Contains("Categories"))
-                dataGridViewPosts.Columns["Categories"].Visible = false; // Hide navigation property
+                dataGridViewPosts.Columns["Categories"]!.Visible = false; // Hide navigation property
             if (dataGridViewPosts.Columns.Contains("Tags"))
-                dataGridViewPosts.Columns["Tags"].Visible = false; // Hide navigation property
+                dataGridViewPosts.Columns["Tags"]!.Visible = false; // Hide navigation property
         }
 
-        private void dataGridViewPosts_SelectionChanged(object sender, EventArgs e)
+        private void dataGridViewPosts_SelectionChanged(object? sender, EventArgs e) // Made sender nullable
         {
             if (dataGridViewPosts.SelectedRows.Count > 0)
             {
@@ -170,13 +170,13 @@ namespace WordpressExtractor.UserControls
             }
         }
 
-        private void searchButton_Click(object sender, EventArgs e)
+        private void searchButton_Click(object? sender, EventArgs e) // Made sender nullable
         {
             string searchTerm = searchTextBox.Text.Trim();
             LoadPosts(searchTerm);
         }
 
-        private void exportMarkdownButton_Click(object sender, EventArgs e)
+        private void exportMarkdownButton_Click(object? sender, EventArgs e) // Made sender nullable
         {
             if (dataGridViewPosts.SelectedRows.Count > 0)
             {
