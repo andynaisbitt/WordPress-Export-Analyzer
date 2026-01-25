@@ -777,10 +777,20 @@ namespace WordpressExtractor.Services
             using (var connection = GetConnection())
             {
                 connection.Open();
-                string query = "SELECT term_id, nicename, parent, name, description FROM categories";
+                string query = @"
+                    SELECT 
+                        c.term_id, 
+                        c.nicename, 
+                        c.parent, 
+                        c.name, 
+                        c.description,
+                        COUNT(pc.post_id) AS PostCount
+                    FROM categories c
+                    LEFT JOIN post_categories pc ON c.term_id = pc.category_term_id
+                    GROUP BY c.term_id, c.nicename, c.parent, c.name, c.description";
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = query; // Use command.CommandText here
+                    command.CommandText = query;
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -791,7 +801,8 @@ namespace WordpressExtractor.Services
                                 Nicename = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
                                 Parent = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
                                 Name = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
-                                Description = reader.IsDBNull(4) ? string.Empty : reader.GetString(4)
+                                Description = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                                PostCount = reader.GetInt32(5) // Read the PostCount
                             });
                         }
                     }
@@ -806,10 +817,19 @@ namespace WordpressExtractor.Services
             using (var connection = GetConnection())
             {
                 connection.Open();
-                string query = "SELECT term_id, nicename, name, description FROM tags";
+                string query = @"
+                    SELECT 
+                        t.term_id, 
+                        t.nicename, 
+                        t.name, 
+                        t.description,
+                        COUNT(pt.post_id) AS PostCount
+                    FROM tags t
+                    LEFT JOIN post_tags pt ON t.term_id = pt.tag_term_id
+                    GROUP BY t.term_id, t.nicename, t.name, t.description";
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = query; // Use command.CommandText here
+                    command.CommandText = query;
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -819,7 +839,8 @@ namespace WordpressExtractor.Services
                                 TermId = reader.GetInt32(0),
                                 Nicename = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
                                 Name = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-                                Description = reader.IsDBNull(3) ? string.Empty : reader.GetString(3)
+                                Description = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                                PostCount = reader.GetInt32(4) // Read the PostCount
                             });
                         }
                     }
@@ -928,7 +949,7 @@ namespace WordpressExtractor.Services
             return attachments;
         }
 
-        public List<InternalLink> GetInternalLinks()
+        public List<InternalLink> GetInternalLinks(int limit = 0, int offset = 0)
         {
             var internalLinks = new List<InternalLink>();
             using (var connection = GetConnection())
@@ -936,18 +957,24 @@ namespace WordpressExtractor.Services
                 connection.Open();
                 // Join with posts table to get source/target titles for display
                 string query = @"
-                    SELECT 
-                        il.id, 
-                        il.source_post_id, 
-                        il.target_post_id, 
+                    SELECT
+                        il.id,
+                        il.source_post_id,
+                        il.target_post_id,
                         il.anchor_text,
                         sp.title AS SourcePostTitle,
                         tp.title AS TargetPostTitle,
-                        tp.post_name AS TargetPostName
+                        tp.post_name AS TargetPostName,
+                        tp.status AS TargetPostStatus -- Added target post status
                     FROM internal_links il
                     JOIN posts sp ON il.source_post_id = sp.post_id
                     JOIN posts tp ON il.target_post_id = tp.post_id";
-                
+
+                if (limit > 0)
+                {
+                    query += $" LIMIT {limit} OFFSET {offset}";
+                }
+
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = query;
@@ -963,13 +990,28 @@ namespace WordpressExtractor.Services
                                 AnchorText = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
                                 SourcePostTitle = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                                 TargetPostTitle = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
-                                TargetPostName = reader.IsDBNull(6) ? string.Empty : reader.GetString(6)
+                                TargetPostName = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                                TargetPostStatus = reader.IsDBNull(7) ? string.Empty : reader.GetString(7) // Read the TargetPostStatus
                             });
                         }
                     }
                 }
             }
             return internalLinks;
+        }
+
+        public int GetInternalLinksCount()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT COUNT(*) FROM internal_links";
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
         }
     }
 }
