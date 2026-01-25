@@ -163,6 +163,7 @@ namespace WordpressExtractor.UserControls
             // Removed dataGridViewPosts.Location as DockStyle.Fill handles placement
             dataGridViewPosts.SelectionChanged += dataGridViewPosts_SelectionChanged;
             dataGridViewPosts.ColumnHeaderMouseClick += dataGridViewPosts_ColumnHeaderMouseClick; 
+            dataGridViewPosts.CellContentClick += dataGridViewPosts_CellContentClick; // <--- ADD THIS LINE
             splitContainerPosts.Panel1.Controls.Add(dataGridViewPosts);
 
 
@@ -401,6 +402,201 @@ namespace WordpressExtractor.UserControls
             {
                 PostSelected?.Invoke(this, -1); // Notify no post selected
                 webBrowserPostContent.DocumentText = ""; // Clear content if no post is selected
+            }
+        }
+
+        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
+                if (column.DataPropertyName != null && dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value != null)
+                {
+                    string cellValue = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value.ToString() ?? string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return; // Don't filter on empty or N/A values
+                    }
+
+                    // Reset all filters first to ensure only the clicked filter is applied
+                    categoryFilterComboBox.SelectedIndex = 0;
+                    tagFilterComboBox.SelectedIndex = 0;
+                    authorFilterComboBox.SelectedIndex = 0;
+                    statusFilterComboBox.SelectedIndex = 0;
+
+                    switch (column.DataPropertyName)
+                    {
+                        case "Creator":
+                            // Find the author in the ComboBox and select it
+                            int authorIndex = authorFilterComboBox.FindStringExact(cellValue);
+                            if (authorIndex != ListBox.NoMatches)
+                            {
+                                authorFilterComboBox.SelectedIndex = authorIndex;
+                            }
+                            break;
+                        case "PostType":
+                            // Find the post type in the ComboBox (or directly apply)
+                            // Note: PostType is "post" or "page", which maps directly to statusfilterComboBox for some cases like "publish"
+                            // A more robust solution might be needed if postType and status are distinct filter types.
+                            int statusIndex = statusFilterComboBox.FindStringExact(cellValue); 
+                            if (statusIndex != ListBox.NoMatches)
+                            {
+                                statusFilterComboBox.SelectedIndex = statusIndex;
+                            }
+                            break;
+                        // For Categories and Tags, the DataPropertyName is just "Categories" or "Tags",
+                        // and the cell value is usually a concatenated string of nicenames or names.
+                        // This requires a more complex parsing logic or a change in how Categories/Tags are displayed.
+                        // For now, let's assume direct matching of a single nicename/name in the cell.
+                        case "Categories":
+                            int categoryIndex = categoryFilterComboBox.FindStringExact(cellValue);
+                            if (categoryIndex != ListBox.NoMatches)
+                            {
+                                categoryFilterComboBox.SelectedIndex = categoryIndex;
+                            }
+                            break;
+                        case "Tags":
+                            int tagIndex = tagFilterComboBox.FindStringExact(cellValue);
+                            if (tagIndex != ListBox.NoMatches)
+                            {
+                                tagFilterComboBox.SelectedIndex = tagIndex;
+                            }
+                            break;
+                    }
+                    currentPage = 1; // Reset to first page
+                    LoadPosts(searchTextBox.Text.Trim()); // Reload with new filter
+                }
+            }
+        }
+
+        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
+                if (column.DataPropertyName != null && dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value != null)
+                {
+                    string cellValue = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value.ToString() ?? string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return; // Don't filter on empty or N/A values
+                    }
+
+                    // Reset all filters first to ensure only the clicked filter is applied
+                    categoryFilterComboBox.SelectedIndex = 0;
+                    tagFilterComboBox.SelectedIndex = 0;
+                    authorFilterComboBox.SelectedIndex = 0;
+                    statusFilterComboBox.SelectedIndex = 0;
+
+                    switch (column.DataPropertyName)
+                    {
+                        case "Creator":
+                            // Find the author in the ComboBox and select it
+                            int authorIndex = authorFilterComboBox.FindStringExact(cellValue);
+                            if (authorIndex != ListBox.NoMatches)
+                            {
+                                authorFilterComboBox.SelectedIndex = authorIndex;
+                            }
+                            break;
+                        case "PostType":
+                            // Find the post type in the ComboBox (or directly apply)
+                            // Note: PostType is "post" or "page", which maps directly to statusfilterComboBox for some cases like "publish"
+                            // A more robust solution might be needed if postType and status are distinct filter types.
+                            int statusIndex = statusFilterComboBox.FindStringExact(cellValue); 
+                            if (statusIndex != ListBox.NoMatches)
+                            {
+                                statusFilterComboBox.SelectedIndex = statusIndex;
+                            }
+                            break;
+                        // For Categories and Tags, the DataPropertyName is just "Categories" or "Tags",
+                        // and the cell value is usually a concatenated string of nicenames or names.
+                        // This requires a more complex parsing logic or a change in how Categories/Tags are displayed.
+                        // For now, let's assume direct matching of a single nicename/name in the cell.
+                        case "Categories":
+                            int categoryIndex = categoryFilterComboBox.FindStringExact(cellValue);
+                            if (categoryIndex != ListBox.NoMatches)
+                            {
+                                categoryFilterComboBox.SelectedIndex = categoryIndex;
+                            }
+                            break;
+                        case "Tags":
+                            int tagIndex = tagFilterComboBox.FindStringExact(cellValue);
+                            if (tagIndex != ListBox.NoMatches)
+                            {
+                                tagFilterComboBox.SelectedIndex = tagIndex;
+                            }
+                            break;
+                    }
+                    currentPage = 1; // Reset to first page
+                    LoadPosts(searchTextBox.Text.Trim()); // Reload with new filter
+                }
+            }
+        }
+
+        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
+                if (column.DataPropertyName != null && dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value != null)
+                {
+                    string cellValue = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value.ToString() ?? string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return; // Don't filter on empty or N/A values
+                    }
+
+                    // Reset all filters first to ensure only the clicked filter is applied
+                    categoryFilterComboBox.SelectedIndex = 0;
+                    tagFilterComboBox.SelectedIndex = 0;
+                    authorFilterComboBox.SelectedIndex = 0;
+                    statusFilterComboBox.SelectedIndex = 0;
+
+                    switch (column.DataPropertyName)
+                    {
+                        case "Creator":
+                            // Find the author in the ComboBox and select it
+                            int authorIndex = authorFilterComboBox.FindStringExact(cellValue);
+                            if (authorIndex != ListBox.NoMatches)
+                            {
+                                authorFilterComboBox.SelectedIndex = authorIndex;
+                            }
+                            break;
+                        case "PostType":
+                            // Find the post type in the ComboBox (or directly apply)
+                            // Note: PostType is "post" or "page", which maps directly to statusfilterComboBox for some cases like "publish"
+                            // A more robust solution might be needed if postType and status are distinct filter types.
+                            int statusIndex = statusFilterComboBox.FindStringExact(cellValue); 
+                            if (statusIndex != ListBox.NoMatches)
+                            {
+                                statusFilterComboBox.SelectedIndex = statusIndex;
+                            }
+                            break;
+                        // For Categories and Tags, the DataPropertyName is just "Categories" or "Tags",
+                        // and the cell value is usually a concatenated string of nicenames or names.
+                        // This requires a more complex parsing logic or a change in how Categories/Tags are displayed.
+                        // For now, let's assume direct matching of a single nicename/name in the cell.
+                        case "Categories":
+                            int categoryIndex = categoryFilterComboBox.FindStringExact(cellValue);
+                            if (categoryIndex != ListBox.NoMatches)
+                            {
+                                categoryFilterComboBox.SelectedIndex = categoryIndex;
+                            }
+                            break;
+                        case "Tags":
+                            int tagIndex = tagFilterComboBox.FindStringExact(cellValue);
+                            if (tagIndex != ListBox.NoMatches)
+                            {
+                                tagFilterComboBox.SelectedIndex = tagIndex;
+                            }
+                            break;
+                    }
+                    currentPage = 1; // Reset to first page
+                    LoadPosts(searchTextBox.Text.Trim()); // Reload with new filter
+                }
             }
         }
 
