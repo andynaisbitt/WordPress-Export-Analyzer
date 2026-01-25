@@ -558,7 +558,7 @@ namespace WordpressExtractor.Services
         }
 
         // --- Get Methods ---
-        public List<Post> GetPosts(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null, int limit = 0, int offset = 0)
+        public List<Post> GetPosts(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null, string sortColumn = "post_date", string sortOrder = "DESC", int limit = 0, int offset = 0)
         {
             var posts = new List<Post>();
             using (var connection = GetConnection())
@@ -604,7 +604,20 @@ namespace WordpressExtractor.Services
                     queryBuilder.Append($" AND p.status = '{postStatus}'");
                 }
 
-                queryBuilder.Append(" ORDER BY p.post_date DESC");
+                // Validate sortColumn to prevent SQL injection
+                HashSet<string> validColumns = new HashSet<string> { "post_id", "title", "post_type", "post_date", "post_name", "creator", "status", "link" };
+                if (!validColumns.Contains(sortColumn.ToLower()))
+                {
+                    sortColumn = "post_date"; // Default to a safe column
+                }
+
+                // Validate sortOrder
+                if (!sortOrder.Equals("ASC", StringComparison.OrdinalIgnoreCase) && !sortOrder.Equals("DESC", StringComparison.OrdinalIgnoreCase))
+                {
+                    sortOrder = "DESC"; // Default to descending
+                }
+
+                queryBuilder.Append($" ORDER BY p.{sortColumn} {sortOrder}");
 
                 if (limit > 0)
                 {
@@ -638,7 +651,7 @@ namespace WordpressExtractor.Services
             return posts;
         }
 
-        public int GetPostCount(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null)
+        public int GetPostCount(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null, string sortColumn = "post_date", string sortOrder = "DESC")
         {
             using (var connection = GetConnection())
             {
