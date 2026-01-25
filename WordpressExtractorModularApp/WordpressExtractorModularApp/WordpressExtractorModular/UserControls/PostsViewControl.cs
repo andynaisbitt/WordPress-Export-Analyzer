@@ -22,6 +22,17 @@ namespace WordpressExtractor.UserControls
         private DataGridView dataGridViewPosts = null!;
         private WebBrowser webBrowserPostContent = null!;
 
+        private int currentPage = 1;
+        private int pageSize = 20; // Default page size
+        private int totalPosts = 0;
+        private int totalPages = 0;
+
+        private Panel panelPagination = null!;
+        private Button prevButton = null!;
+        private Button nextButton = null!;
+        private Label pageLabel = null!;
+        private ComboBox pageSizeComboBox = null!;
+
         public PostsViewControl()
         {
             InitializeComponent(); // This will be from PostsViewControl.Designer.cs
@@ -106,6 +117,45 @@ namespace WordpressExtractor.UserControls
             webBrowserPostContent = new WebBrowser();
             webBrowserPostContent.Dock = DockStyle.Fill;
             splitContainerPosts.Panel2.Controls.Add(webBrowserPostContent);
+
+            // Pagination Panel
+            panelPagination = new Panel();
+            panelPagination.Dock = DockStyle.Bottom;
+            panelPagination.Height = 35;
+            splitContainerPosts.Panel1.Controls.Add(panelPagination);
+
+            prevButton = new Button();
+            prevButton.Text = "Previous";
+            prevButton.Dock = DockStyle.Left;
+            prevButton.Click += prevButton_Click;
+            panelPagination.Controls.Add(prevButton);
+
+            nextButton = new Button();
+            nextButton.Text = "Next";
+            nextButton.Dock = DockStyle.Right;
+            nextButton.Click += nextButton_Click;
+            panelPagination.Controls.Add(nextButton);
+
+            pageLabel = new Label();
+            pageLabel.Text = "Page 1 of 1";
+            pageLabel.Dock = DockStyle.Fill;
+            pageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            panelPagination.Controls.Add(pageLabel);
+
+            pageSizeComboBox = new ComboBox();
+            pageSizeComboBox.Dock = DockStyle.Right;
+            pageSizeComboBox.Width = 60;
+            pageSizeComboBox.Items.AddRange(new object[] { "10", "20", "50", "100" });
+            pageSizeComboBox.SelectedIndex = 1; // Default to 20
+            pageSizeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            pageSizeComboBox.SelectedIndexChanged += pageSizeComboBox_SelectedIndexChanged;
+            panelPagination.Controls.Add(pageSizeComboBox);
+
+            // Re-order controls for proper layout
+            panelPagination.Controls.SetChildIndex(pageSizeComboBox, 0);
+            panelPagination.Controls.SetChildIndex(nextButton, 1);
+            panelPagination.Controls.SetChildIndex(pageLabel, 2);
+            panelPagination.Controls.SetChildIndex(prevButton, 3);
         }
 
         private void PostsViewControl_Load(object? sender, EventArgs e) // Made sender nullable
@@ -116,8 +166,31 @@ namespace WordpressExtractor.UserControls
         public void LoadPosts(string searchTerm = "")
         {
             if (_dataService == null) return;
-            var posts = _dataService.GetPosts(searchTerm);
+
+            totalPosts = _dataService.GetPostCount(searchTerm);
+            totalPages = (int)Math.Ceiling((double)totalPosts / pageSize);
+
+            if (currentPage > totalPages && totalPages > 0)
+            {
+                currentPage = totalPages;
+            }
+            else if (totalPages == 0)
+            {
+                currentPage = 0;
+            }
+            else if (currentPage == 0 && totalPages > 0) // Handle case where currentPage might be 0 initially
+            {
+                currentPage = 1;
+            }
+
+            int offset = (currentPage - 1) * pageSize;
+            if (offset < 0) offset = 0; // Ensure offset is not negative
+
+            var posts = _dataService.GetPosts(searchTerm, pageSize, offset);
             dataGridViewPosts.DataSource = posts;
+
+            UpdatePaginationControls();
+
             // Optionally hide columns that are not relevant for initial display or too long
             if (dataGridViewPosts.Columns.Contains("CleanedHtmlSource"))
                 dataGridViewPosts.Columns["CleanedHtmlSource"]!.Visible = false;
@@ -135,6 +208,13 @@ namespace WordpressExtractor.UserControls
                 dataGridViewPosts.Columns["Categories"]!.Visible = false; // Hide navigation property
             if (dataGridViewPosts.Columns.Contains("Tags"))
                 dataGridViewPosts.Columns["Tags"]!.Visible = false; // Hide navigation property
+        }
+
+        private void UpdatePaginationControls()
+        {
+            pageLabel.Text = totalPages > 0 ? $"Page {currentPage} of {totalPages}" : "No Posts";
+            prevButton.Enabled = currentPage > 1;
+            nextButton.Enabled = currentPage < totalPages;
         }
 
         private void dataGridViewPosts_SelectionChanged(object? sender, EventArgs e) // Made sender nullable
@@ -238,6 +318,36 @@ namespace WordpressExtractor.UserControls
             // Replace common HTML entities
             plainText = plainText.Replace("&nbsp;", " ").Replace("&amp;", "&").Replace("&lt;", "<").Replace("&gt;", ">");
             return plainText;
+        }
+        private void prevButton_Click(object? sender, EventArgs e)
+        {
+            if (currentPage > 1)
+            {
+                currentPage--;
+                LoadPosts(searchTextBox.Text.Trim());
+            }
+        }
+
+        private void nextButton_Click(object? sender, EventArgs e)
+        {
+            if (currentPage < totalPages)
+            {
+                currentPage++;
+                LoadPosts(searchTextBox.Text.Trim());
+            }
+        }
+
+        private void pageSizeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (pageSizeComboBox.SelectedItem != null)
+            {
+                if (int.TryParse(pageSizeComboBox.SelectedItem.ToString(), out int newPageSize))
+                {
+                    pageSize = newPageSize;
+                    currentPage = 1; // Reset to first page when page size changes
+                    LoadPosts(searchTextBox.Text.Trim());
+                }
+            }
         }
     }
 }

@@ -558,7 +558,7 @@ namespace WordpressExtractor.Services
         }
 
         // --- Get Methods ---
-        public List<Post> GetPosts(string searchTerm = null)
+        public List<Post> GetPosts(string searchTerm = null, int limit = 0, int offset = 0)
         {
             var posts = new List<Post>();
             using (var connection = GetConnection())
@@ -571,6 +571,11 @@ namespace WordpressExtractor.Services
                 }
                 query += " ORDER BY post_date DESC";
 
+                if (limit > 0)
+                {
+                    query += $" LIMIT {limit} OFFSET {offset}";
+                }
+
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = query;
@@ -582,7 +587,7 @@ namespace WordpressExtractor.Services
                             {
                                 PostId = reader.GetInt32(0),
                                 Title = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                                Link = reader.IsDBNull(2) ? string.Empty : reader.GetString(2), // New
+                                Link = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
                                 PostType = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
                                 PostDate = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4),
                                 PostName = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
@@ -596,6 +601,25 @@ namespace WordpressExtractor.Services
                 }
             }
             return posts;
+        }
+
+        public int GetPostCount(string searchTerm = null)
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT COUNT(*) FROM posts WHERE post_type IN ('post', 'page')";
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    query += $" AND (title LIKE '%{searchTerm}%' OR content_encoded LIKE '%{searchTerm}%')";
+                }
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
         }
 
         public Post? GetPostById(int postId)
