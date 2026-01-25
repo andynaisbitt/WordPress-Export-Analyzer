@@ -651,13 +651,14 @@ namespace WordpressExtractor.Services
             return posts;
         }
 
-        public int GetPostCount(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null, string sortColumn = "post_date", string sortOrder = "DESC")
+        public List<Post> GetPosts(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null, string sortColumn = "post_date", string sortOrder = "DESC", int limit = 0, int offset = 0)
         {
+            var posts = new List<Post>();
             using (var connection = GetConnection())
             {
                 connection.Open();
                 var queryBuilder = new System.Text.StringBuilder();
-                queryBuilder.Append("SELECT COUNT(DISTINCT p.post_id) FROM posts p");
+                queryBuilder.Append("SELECT DISTINCT p.post_id, p.title, p.link, p.post_type, p.post_date, p.post_name, p.cleaned_html_source, p.content_encoded, p.creator, p.status FROM posts p");
 
                 if (!string.IsNullOrWhiteSpace(categoryNicename))
                 {
@@ -669,6 +670,7 @@ namespace WordpressExtractor.Services
                 }
                 if (!string.IsNullOrWhiteSpace(authorLogin))
                 {
+                    // Assuming 'creator' in posts table maps to 'login' in authors table
                     queryBuilder.Append(" JOIN authors a ON p.creator = a.login");
                 }
 
@@ -695,9 +697,129 @@ namespace WordpressExtractor.Services
                     queryBuilder.Append($" AND p.status = '{postStatus}'");
                 }
 
+                // Validate sortColumn to prevent SQL injection
+                HashSet<string> validColumns = new HashSet<string> { "post_id", "title", "post_type", "post_date", "post_name", "creator", "status", "link" };
+                if (!validColumns.Contains(sortColumn.ToLower()))
+                {
+                    sortColumn = "post_date"; // Default to a safe column
+                }
+
+                // Validate sortOrder
+                if (!sortOrder.Equals("ASC", StringComparison.OrdinalIgnoreCase) && !sortOrder.Equals("DESC", StringComparison.OrdinalIgnoreCase))
+                {
+                    sortOrder = "DESC"; // Default to descending
+                }
+
+                queryBuilder.Append($" ORDER BY p.{sortColumn} {sortOrder}");
+
+                if (limit > 0)
+                {
+                    queryBuilder.Append($" LIMIT {limit} OFFSET {offset}");
+                }
+
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = queryBuilder.ToString();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            posts.Add(new Post
+                            {
+                                PostId = reader.GetInt32(0),
+                                Title = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                                Link = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                                PostType = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                                PostDate = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4),
+                                PostName = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+                                CleanedHtmlSource = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                                ContentEncoded = reader.IsDBNull(7) ? string.Empty : reader.GetString(7),
+                                Creator = reader.IsDBNull(8) ? string.Empty : reader.GetString(8),
+                                Status = reader.IsDBNull(9) ? string.Empty : reader.GetString(9)
+                            });
+                        }
+                    }
+                }
+            }
+            return posts;
+        }
+
+        public int GetPostCount(string postType = "any")
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                var queryBuilder = new System.Text.StringBuilder();
+                queryBuilder.Append("SELECT COUNT(DISTINCT p.post_id) FROM posts p");
+
+                if (!string.IsNullOrWhiteSpace(postType) && postType.ToLower() != "any")
+                {
+                    queryBuilder.Append($" WHERE p.post_type = '{postType}'");
+                }
+                else
+                {
+                    queryBuilder.Append(" WHERE p.post_type IN ('post', 'page')"); // Count both posts and pages by default
+                }
+                
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = queryBuilder.ToString();
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
+        }
+
+        public int GetCategoryCount()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT COUNT(*) FROM categories";
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
+        }
+
+        public int GetTagCount()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT COUNT(*) FROM tags";
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
+        }
+
+        public int GetCommentCount()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT COUNT(*) FROM comments";
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
+        }
+
+        public int GetAttachmentCount()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT COUNT(*) FROM attachments";
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
                     return Convert.ToInt32(command.ExecuteScalar());
                 }
             }
