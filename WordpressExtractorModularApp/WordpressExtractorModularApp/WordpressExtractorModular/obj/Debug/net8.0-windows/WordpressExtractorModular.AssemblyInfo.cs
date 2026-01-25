@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WordpressExtractorModular")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+67fe943aa295eb3d3681ef48d65dfacc54175569")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d78e3895ef3088b90fe44c4a0a692f415045401b")]
 [assembly: System.Reflection.AssemblyProductAttribute("WordpressExtractorModular")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WordpressExtractorModular")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
