@@ -558,27 +558,62 @@ namespace WordpressExtractor.Services
         }
 
         // --- Get Methods ---
-        public List<Post> GetPosts(string searchTerm = null, int limit = 0, int offset = 0)
+        public List<Post> GetPosts(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null, int limit = 0, int offset = 0)
         {
             var posts = new List<Post>();
             using (var connection = GetConnection())
             {
                 connection.Open();
-                string query = "SELECT post_id, title, link, post_type, post_date, post_name, cleaned_html_source, content_encoded, creator, status FROM posts WHERE post_type IN ('post', 'page')";
+                var queryBuilder = new System.Text.StringBuilder();
+                queryBuilder.Append("SELECT DISTINCT p.post_id, p.title, p.link, p.post_type, p.post_date, p.post_name, p.cleaned_html_source, p.content_encoded, p.creator, p.status FROM posts p");
+
+                if (!string.IsNullOrWhiteSpace(categoryNicename))
+                {
+                    queryBuilder.Append(" JOIN post_categories pc ON p.post_id = pc.post_id JOIN categories c ON pc.category_term_id = c.term_id");
+                }
+                if (!string.IsNullOrWhiteSpace(tagNicename))
+                {
+                    queryBuilder.Append(" JOIN post_tags pt ON p.post_id = pt.post_id JOIN tags t ON pt.tag_term_id = t.term_id");
+                }
+                if (!string.IsNullOrWhiteSpace(authorLogin))
+                {
+                    // Assuming 'creator' in posts table maps to 'login' in authors table
+                    queryBuilder.Append(" JOIN authors a ON p.creator = a.login");
+                }
+
+                queryBuilder.Append(" WHERE p.post_type IN ('post', 'page')");
+
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    query += $" AND (title LIKE '%{searchTerm}%' OR content_encoded LIKE '%{searchTerm}%')";
+                    queryBuilder.Append($" AND (p.title LIKE '%{searchTerm}%' OR p.content_encoded LIKE '%{searchTerm}%')");
                 }
-                query += " ORDER BY post_date DESC";
+                if (!string.IsNullOrWhiteSpace(categoryNicename))
+                {
+                    queryBuilder.Append($" AND c.nicename = '{categoryNicename}'");
+                }
+                if (!string.IsNullOrWhiteSpace(tagNicename))
+                {
+                    queryBuilder.Append($" AND t.nicename = '{tagNicename}'");
+                }
+                if (!string.IsNullOrWhiteSpace(authorLogin))
+                {
+                    queryBuilder.Append($" AND a.login = '{authorLogin}'");
+                }
+                if (!string.IsNullOrWhiteSpace(postStatus))
+                {
+                    queryBuilder.Append($" AND p.status = '{postStatus}'");
+                }
+
+                queryBuilder.Append(" ORDER BY p.post_date DESC");
 
                 if (limit > 0)
                 {
-                    query += $" LIMIT {limit} OFFSET {offset}";
+                    queryBuilder.Append($" LIMIT {limit} OFFSET {offset}");
                 }
 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = query;
+                    command.CommandText = queryBuilder.ToString();
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -603,20 +638,53 @@ namespace WordpressExtractor.Services
             return posts;
         }
 
-        public int GetPostCount(string searchTerm = null)
+        public int GetPostCount(string searchTerm = null, string categoryNicename = null, string tagNicename = null, string authorLogin = null, string postStatus = null)
         {
             using (var connection = GetConnection())
             {
                 connection.Open();
-                string query = "SELECT COUNT(*) FROM posts WHERE post_type IN ('post', 'page')";
+                var queryBuilder = new System.Text.StringBuilder();
+                queryBuilder.Append("SELECT COUNT(DISTINCT p.post_id) FROM posts p");
+
+                if (!string.IsNullOrWhiteSpace(categoryNicename))
+                {
+                    queryBuilder.Append(" JOIN post_categories pc ON p.post_id = pc.post_id JOIN categories c ON pc.category_term_id = c.term_id");
+                }
+                if (!string.IsNullOrWhiteSpace(tagNicename))
+                {
+                    queryBuilder.Append(" JOIN post_tags pt ON p.post_id = pt.post_id JOIN tags t ON pt.tag_term_id = t.term_id");
+                }
+                if (!string.IsNullOrWhiteSpace(authorLogin))
+                {
+                    queryBuilder.Append(" JOIN authors a ON p.creator = a.login");
+                }
+
+                queryBuilder.Append(" WHERE p.post_type IN ('post', 'page')");
+
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    query += $" AND (title LIKE '%{searchTerm}%' OR content_encoded LIKE '%{searchTerm}%')";
+                    queryBuilder.Append($" AND (p.title LIKE '%{searchTerm}%' OR p.content_encoded LIKE '%{searchTerm}%')");
+                }
+                if (!string.IsNullOrWhiteSpace(categoryNicename))
+                {
+                    queryBuilder.Append($" AND c.nicename = '{categoryNicename}'");
+                }
+                if (!string.IsNullOrWhiteSpace(tagNicename))
+                {
+                    queryBuilder.Append($" AND t.nicename = '{tagNicename}'");
+                }
+                if (!string.IsNullOrWhiteSpace(authorLogin))
+                {
+                    queryBuilder.Append($" AND a.login = '{authorLogin}'");
+                }
+                if (!string.IsNullOrWhiteSpace(postStatus))
+                {
+                    queryBuilder.Append($" AND p.status = '{postStatus}'");
                 }
 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = query;
+                    command.CommandText = queryBuilder.ToString();
                     return Convert.ToInt32(command.ExecuteScalar());
                 }
             }

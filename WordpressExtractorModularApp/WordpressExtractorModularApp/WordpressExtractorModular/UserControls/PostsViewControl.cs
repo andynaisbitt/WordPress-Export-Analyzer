@@ -33,6 +33,11 @@ namespace WordpressExtractor.UserControls
         private Label pageLabel = null!;
         private ComboBox pageSizeComboBox = null!;
 
+        private ComboBox categoryFilterComboBox = null!;
+        private ComboBox tagFilterComboBox = null!;
+        private ComboBox authorFilterComboBox = null!;
+        private ComboBox statusFilterComboBox = null!;
+
         public PostsViewControl()
         {
             InitializeComponent(); // This will be from PostsViewControl.Designer.cs
@@ -68,11 +73,92 @@ namespace WordpressExtractor.UserControls
             splitContainerPosts.SplitterDistance = 300;
             this.Controls.Add(splitContainerPosts);
 
-            // Panel for search and export controls
+            // *** Filters Panel ***
+            Panel panelFilters = new Panel();
+            panelFilters.Dock = DockStyle.Top;
+            panelFilters.Height = 35; // Adjusted height for single row of filters
+            splitContainerPosts.Panel1.Controls.Add(panelFilters); // Add filters panel first
+
+            categoryFilterComboBox = new ComboBox();
+            categoryFilterComboBox.Dock = DockStyle.Left;
+            categoryFilterComboBox.Width = 120;
+            categoryFilterComboBox.Items.Add("All Categories");
+            categoryFilterComboBox.SelectedIndex = 0;
+            categoryFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            categoryFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
+            panelFilters.Controls.Add(categoryFilterComboBox);
+
+            tagFilterComboBox = new ComboBox();
+            tagFilterComboBox.Dock = DockStyle.Left;
+            tagFilterComboBox.Width = 120;
+            tagFilterComboBox.Items.Add("All Tags");
+            tagFilterComboBox.SelectedIndex = 0;
+            tagFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            tagFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
+            panelFilters.Controls.Add(tagFilterComboBox);
+
+            authorFilterComboBox = new ComboBox();
+            authorFilterComboBox.Dock = DockStyle.Left;
+            authorFilterComboBox.Width = 120;
+            authorFilterComboBox.Items.Add("All Authors");
+            authorFilterComboBox.SelectedIndex = 0;
+            authorFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            authorFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
+            panelFilters.Controls.Add(authorFilterComboBox);
+
+            statusFilterComboBox = new ComboBox();
+            statusFilterComboBox.Dock = DockStyle.Left;
+            statusFilterComboBox.Width = 120;
+            statusFilterComboBox.Items.AddRange(new object[] { "All Statuses", "publish", "draft", "pending", "private" });
+            statusFilterComboBox.SelectedIndex = 0;
+            statusFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            statusFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
+            panelFilters.Controls.Add(statusFilterComboBox);
+
+
+            // *** Panel for search and export controls ***
             panelPostSearch = new Panel();
             panelPostSearch.Dock = DockStyle.Top;
             panelPostSearch.Height = 35;
-            splitContainerPosts.Panel1.Controls.Add(panelPostSearch);
+            splitContainerPosts.Panel1.Controls.Add(panelPostSearch); // Add search panel next
+
+            searchTextBox = new TextBox();
+            searchTextBox.Dock = DockStyle.Fill;
+            searchTextBox.PlaceholderText = "Search posts...";
+            panelPostSearch.Controls.Add(searchTextBox);
+
+            searchButton = new Button();
+            searchButton.Text = "Search";
+            searchButton.Dock = DockStyle.Right;
+            searchButton.Width = 75;
+            searchButton.Click += searchButton_Click;
+            panelPostSearch.Controls.Add(searchButton);
+
+            exportMarkdownButton = new Button();
+            exportMarkdownButton.Text = "Export MD";
+            exportMarkdownButton.Dock = DockStyle.Right;
+            exportMarkdownButton.Width = 80;
+            exportMarkdownButton.Click += exportMarkdownButton_Click;
+            panelPostSearch.Controls.Add(exportMarkdownButton);
+            
+            // Re-order controls for proper layout (search box left, export then search button right)
+            panelPostSearch.Controls.SetChildIndex(searchButton, 0);
+            panelPostSearch.Controls.SetChildIndex(exportMarkdownButton, 1);
+            panelPostSearch.Controls.SetChildIndex(searchTextBox, 2);
+
+
+            // DataGridView for Posts
+            dataGridViewPosts = new DataGridView();
+            dataGridViewPosts.Dock = DockStyle.Fill; // Fill the remaining space
+            dataGridViewPosts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewPosts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridViewPosts.ReadOnly = true;
+            dataGridViewPosts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dataGridViewPosts.MultiSelect = false;
+            dataGridViewPosts.RowHeadersVisible = false;
+            // Removed dataGridViewPosts.Location as DockStyle.Fill handles placement
+            dataGridViewPosts.SelectionChanged += dataGridViewPosts_SelectionChanged;
+            splitContainerPosts.Panel1.Controls.Add(dataGridViewPosts);
 
             searchTextBox = new TextBox();
             searchTextBox.Dock = DockStyle.Fill;
@@ -158,8 +244,43 @@ namespace WordpressExtractor.UserControls
             panelPagination.Controls.SetChildIndex(prevButton, 3);
         }
 
+        private void PopulateFilterComboBoxes()
+        {
+            if (_dataService == null) return;
+
+            // Categories
+            categoryFilterComboBox.Items.Clear();
+            categoryFilterComboBox.Items.Add("All Categories");
+            foreach (var category in _dataService.GetCategories())
+            {
+                categoryFilterComboBox.Items.Add(category.Nicename);
+            }
+            categoryFilterComboBox.SelectedIndex = 0;
+
+            // Tags
+            tagFilterComboBox.Items.Clear();
+            tagFilterComboBox.Items.Add("All Tags");
+            foreach (var tag in _dataService.GetTags())
+            {
+                tagFilterComboBox.Items.Add(tag.Nicename);
+            }
+            tagFilterComboBox.SelectedIndex = 0;
+
+            // Authors
+            authorFilterComboBox.Items.Clear();
+            authorFilterComboBox.Items.Add("All Authors");
+            foreach (var author in _dataService.GetAuthors())
+            {
+                authorFilterComboBox.Items.Add(author.Login); // Using Login for author filter
+            }
+            authorFilterComboBox.SelectedIndex = 0;
+
+            // Statuses are static, so no need to populate from DB
+        }
+
         private void PostsViewControl_Load(object? sender, EventArgs e) // Made sender nullable
         {
+            PopulateFilterComboBoxes(); // Populate filters before loading posts
             LoadPosts();
         }
 
@@ -167,7 +288,20 @@ namespace WordpressExtractor.UserControls
         {
             if (_dataService == null) return;
 
-            totalPosts = _dataService.GetPostCount(searchTerm);
+            // Get filter values from ComboBoxes
+            string? categoryNicename = categoryFilterComboBox.SelectedItem?.ToString();
+            if (categoryNicename == "All Categories") categoryNicename = null;
+
+            string? tagNicename = tagFilterComboBox.SelectedItem?.ToString();
+            if (tagNicename == "All Tags") tagNicename = null;
+
+            string? authorLogin = authorFilterComboBox.SelectedItem?.ToString();
+            if (authorLogin == "All Authors") authorLogin = null;
+
+            string? postStatus = statusFilterComboBox.SelectedItem?.ToString();
+            if (postStatus == "All Statuses") postStatus = null;
+
+            totalPosts = _dataService.GetPostCount(searchTerm, categoryNicename, tagNicename, authorLogin, postStatus);
             totalPages = (int)Math.Ceiling((double)totalPosts / pageSize);
 
             if (currentPage > totalPages && totalPages > 0)
@@ -186,7 +320,7 @@ namespace WordpressExtractor.UserControls
             int offset = (currentPage - 1) * pageSize;
             if (offset < 0) offset = 0; // Ensure offset is not negative
 
-            var posts = _dataService.GetPosts(searchTerm, pageSize, offset);
+            var posts = _dataService.GetPosts(searchTerm, categoryNicename, tagNicename, authorLogin, postStatus, pageSize, offset);
             dataGridViewPosts.DataSource = posts;
 
             UpdatePaginationControls();
@@ -252,8 +386,8 @@ namespace WordpressExtractor.UserControls
 
         private void searchButton_Click(object? sender, EventArgs e) // Made sender nullable
         {
-            string searchTerm = searchTextBox.Text.Trim();
-            LoadPosts(searchTerm);
+            currentPage = 1; // Reset to first page on new search
+            LoadPosts(searchTextBox.Text.Trim());
         }
 
         private void exportMarkdownButton_Click(object? sender, EventArgs e) // Made sender nullable
@@ -310,6 +444,12 @@ namespace WordpressExtractor.UserControls
             }
         }
 
+        private void filterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            currentPage = 1; // Reset to first page on new filter selection
+            LoadPosts(searchTextBox.Text.Trim());
+        }
+
         // Simple HTML to Markdown conversion (very basic, can be improved)
         private string ConvertHtmlToMarkdownSimple(string html)
         {
@@ -319,12 +459,13 @@ namespace WordpressExtractor.UserControls
             plainText = plainText.Replace("&nbsp;", " ").Replace("&amp;", "&").Replace("&lt;", "<").Replace("&gt;", ">");
             return plainText;
         }
+
         private void prevButton_Click(object? sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 currentPage--;
-                LoadPosts(searchTextBox.Text.Trim());
+                LoadPosts();
             }
         }
 
@@ -333,7 +474,7 @@ namespace WordpressExtractor.UserControls
             if (currentPage < totalPages)
             {
                 currentPage++;
-                LoadPosts(searchTextBox.Text.Trim());
+                LoadPosts();
             }
         }
 
@@ -345,9 +486,10 @@ namespace WordpressExtractor.UserControls
                 {
                     pageSize = newPageSize;
                     currentPage = 1; // Reset to first page when page size changes
-                    LoadPosts(searchTextBox.Text.Trim());
+                    LoadPosts();
                 }
             }
         }
+
     }
 }
