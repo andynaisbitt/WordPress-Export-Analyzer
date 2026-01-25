@@ -1,17 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using WordpressExtractor.Models;
 using WordpressExtractor.Services;
-using Markdig; // For Markdown export, will add package later
 
 namespace WordpressExtractor.UserControls
 {
     public partial class PostsViewControl : UserControl
     {
         private SQLiteDataService? _dataService;
-        public event EventHandler<int>? PostSelected; // Event to notify parent form about selected post
+        public event EventHandler<int>? PostSelected;
 
         // Declare controls
         private SplitContainer splitContainerPosts = null!;
@@ -23,7 +24,7 @@ namespace WordpressExtractor.UserControls
         private WebBrowser webBrowserPostContent = null!;
 
         private int currentPage = 1;
-        private int pageSize = 20; // Default page size
+        private int pageSize = 20;
         private int totalPosts = 0;
         private int totalPages = 0;
 
@@ -43,19 +44,18 @@ namespace WordpressExtractor.UserControls
 
         public PostsViewControl()
         {
-            InitializeComponent(); // This will be from PostsViewControl.Designer.cs
-            SetupUIControls(); // Custom setup of controls
-            this.Load += PostsViewControl_Load; // Hook the Load event
+            InitializeComponent();
+            SetupUIControls();
+            this.Load += PostsViewControl_Load;
 
-            // Initialize data service in the constructor to ensure it's available
-            // The MainForm will pass its instance, but for testing or standalone, this is a fallback
-            if (_dataService == null) 
+            // Fallback init if not provided by MainForm
+            if (_dataService == null)
             {
                 try
                 {
                     _dataService = new SQLiteDataService("wordpress_extracted_data.db");
                 }
-                catch (FileNotFoundException ex)
+                catch (Exception ex)
                 {
                     MessageBox.Show(ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
@@ -69,194 +69,229 @@ namespace WordpressExtractor.UserControls
 
         private void SetupUIControls()
         {
-            // Set up SplitContainer
-            splitContainerPosts = new SplitContainer();
-            splitContainerPosts.Dock = DockStyle.Fill;
-            splitContainerPosts.Orientation = Orientation.Vertical;
-            splitContainerPosts.SplitterDistance = 300;
+            // SplitContainer
+            splitContainerPosts = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                SplitterDistance = 350
+            };
             this.Controls.Add(splitContainerPosts);
 
-            // *** Filters Panel ***
-            Panel panelFilters = new Panel();
-            panelFilters.Dock = DockStyle.Top;
-            panelFilters.Height = 35; // Adjusted height for single row of filters
-            splitContainerPosts.Panel1.Controls.Add(panelFilters); // Add filters panel first
+            // Filters panel
+            Panel panelFilters = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 35
+            };
+            splitContainerPosts.Panel1.Controls.Add(panelFilters);
 
-            categoryFilterComboBox = new ComboBox();
-            categoryFilterComboBox.Dock = DockStyle.Left;
-            categoryFilterComboBox.Width = 120;
+            categoryFilterComboBox = new ComboBox
+            {
+                Dock = DockStyle.Left,
+                Width = 140,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
             categoryFilterComboBox.Items.Add("All Categories");
             categoryFilterComboBox.SelectedIndex = 0;
-            categoryFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             categoryFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
             panelFilters.Controls.Add(categoryFilterComboBox);
 
-            tagFilterComboBox = new ComboBox();
-            tagFilterComboBox.Dock = DockStyle.Left;
-            tagFilterComboBox.Width = 120;
+            tagFilterComboBox = new ComboBox
+            {
+                Dock = DockStyle.Left,
+                Width = 120,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
             tagFilterComboBox.Items.Add("All Tags");
             tagFilterComboBox.SelectedIndex = 0;
-            tagFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             tagFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
             panelFilters.Controls.Add(tagFilterComboBox);
 
-            authorFilterComboBox = new ComboBox();
-            authorFilterComboBox.Dock = DockStyle.Left;
-            authorFilterComboBox.Width = 120;
+            authorFilterComboBox = new ComboBox
+            {
+                Dock = DockStyle.Left,
+                Width = 120,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
             authorFilterComboBox.Items.Add("All Authors");
             authorFilterComboBox.SelectedIndex = 0;
-            authorFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             authorFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
             panelFilters.Controls.Add(authorFilterComboBox);
 
-            statusFilterComboBox = new ComboBox();
-            statusFilterComboBox.Dock = DockStyle.Left;
-            statusFilterComboBox.Width = 120;
+            statusFilterComboBox = new ComboBox
+            {
+                Dock = DockStyle.Left,
+                Width = 120,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
             statusFilterComboBox.Items.AddRange(new object[] { "All Statuses", "publish", "draft", "pending", "private" });
             statusFilterComboBox.SelectedIndex = 0;
-            statusFilterComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             statusFilterComboBox.SelectedIndexChanged += filterComboBox_SelectedIndexChanged;
             panelFilters.Controls.Add(statusFilterComboBox);
 
+            // Search + Export panel
+            panelPostSearch = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 35
+            };
+            splitContainerPosts.Panel1.Controls.Add(panelPostSearch);
 
-            // *** Panel for search and export controls ***
-            panelPostSearch = new Panel();
-            panelPostSearch.Dock = DockStyle.Top;
-            panelPostSearch.Height = 35;
-            splitContainerPosts.Panel1.Controls.Add(panelPostSearch); // Add search panel next
-
-            searchTextBox = new TextBox();
-            searchTextBox.Dock = DockStyle.Fill;
-            searchTextBox.PlaceholderText = "Search posts...";
+            searchTextBox = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                PlaceholderText = "Search posts..."
+            };
             panelPostSearch.Controls.Add(searchTextBox);
 
-            searchButton = new Button();
-            searchButton.Text = "Search";
-            searchButton.Dock = DockStyle.Right;
-            searchButton.Width = 75;
+            exportMarkdownButton = new Button
+            {
+                Text = "Export MD",
+                Dock = DockStyle.Right,
+                Width = 90
+            };
+            exportMarkdownButton.Click += exportMarkdownButton_Click;
+            panelPostSearch.Controls.Add(exportMarkdownButton);
+
+            searchButton = new Button
+            {
+                Text = "Search",
+                Dock = DockStyle.Right,
+                Width = 80
+            };
             searchButton.Click += searchButton_Click;
             panelPostSearch.Controls.Add(searchButton);
 
-            exportMarkdownButton = new Button();
-            exportMarkdownButton.Text = "Export MD";
-            exportMarkdownButton.Dock = DockStyle.Right;
-            exportMarkdownButton.Width = 80;
-            exportMarkdownButton.Click += exportMarkdownButton_Click;
-            panelPostSearch.Controls.Add(exportMarkdownButton);
-            
-            // Re-order controls for proper layout (search box left, export then search button right)
+            // Ensure layout order
             panelPostSearch.Controls.SetChildIndex(searchButton, 0);
             panelPostSearch.Controls.SetChildIndex(exportMarkdownButton, 1);
             panelPostSearch.Controls.SetChildIndex(searchTextBox, 2);
 
-
-            // DataGridView for Posts
-            dataGridViewPosts = new DataGridView();
-            dataGridViewPosts.Dock = DockStyle.Fill; // Fill the remaining space
-            dataGridViewPosts.AutoGenerateColumns = false; // Prevent auto-generation to control columns explicitly
-            dataGridViewPosts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dataGridViewPosts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewPosts.ReadOnly = true;
-            dataGridViewPosts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewPosts.MultiSelect = false;
-            dataGridViewPosts.RowHeadersVisible = false;
-            // Removed dataGridViewPosts.Location as DockStyle.Fill handles placement
+            // DataGridView
+            dataGridViewPosts = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                RowHeadersVisible = false
+            };
             dataGridViewPosts.SelectionChanged += dataGridViewPosts_SelectionChanged;
-            dataGridViewPosts.ColumnHeaderMouseClick += dataGridViewPosts_ColumnHeaderMouseClick; 
-            dataGridViewPosts.CellContentClick += dataGridViewPosts_CellContentClick; // <--- ADD THIS LINE
+            dataGridViewPosts.ColumnHeaderMouseClick += dataGridViewPosts_ColumnHeaderMouseClick;
+            dataGridViewPosts.CellContentClick += dataGridViewPosts_CellContentClick;
             splitContainerPosts.Panel1.Controls.Add(dataGridViewPosts);
 
-
-            // WebBrowser for Post Content
-            webBrowserPostContent = new WebBrowser();
-            webBrowserPostContent.Dock = DockStyle.Fill;
+            // WebBrowser
+            webBrowserPostContent = new WebBrowser { Dock = DockStyle.Fill };
             splitContainerPosts.Panel2.Controls.Add(webBrowserPostContent);
 
-            // Pagination Panel
-            panelPagination = new Panel();
-            panelPagination.Dock = DockStyle.Bottom;
-            panelPagination.Height = 35;
+            // Pagination
+            panelPagination = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 35
+            };
             splitContainerPosts.Panel1.Controls.Add(panelPagination);
 
-            prevButton = new Button();
-            prevButton.Text = "Previous";
-            prevButton.Dock = DockStyle.Left;
+            prevButton = new Button
+            {
+                Text = "Previous",
+                Dock = DockStyle.Left,
+                Width = 90
+            };
             prevButton.Click += prevButton_Click;
             panelPagination.Controls.Add(prevButton);
 
-            nextButton = new Button();
-            nextButton.Text = "Next";
-            nextButton.Dock = DockStyle.Right;
+            nextButton = new Button
+            {
+                Text = "Next",
+                Dock = DockStyle.Right,
+                Width = 90
+            };
             nextButton.Click += nextButton_Click;
             panelPagination.Controls.Add(nextButton);
 
-            pageLabel = new Label();
-            pageLabel.Text = "Page 1 of 1";
-            pageLabel.Dock = DockStyle.Fill;
-            pageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            panelPagination.Controls.Add(pageLabel);
-
-            pageSizeComboBox = new ComboBox();
-            pageSizeComboBox.Dock = DockStyle.Right;
-            pageSizeComboBox.Width = 60;
+            pageSizeComboBox = new ComboBox
+            {
+                Dock = DockStyle.Right,
+                Width = 70,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
             pageSizeComboBox.Items.AddRange(new object[] { "10", "20", "50", "100" });
-            pageSizeComboBox.SelectedIndex = 1; // Default to 20
-            pageSizeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            pageSizeComboBox.SelectedIndex = 1;
             pageSizeComboBox.SelectedIndexChanged += pageSizeComboBox_SelectedIndexChanged;
             panelPagination.Controls.Add(pageSizeComboBox);
 
-            // Re-order controls for proper layout
+            pageLabel = new Label
+            {
+                Text = "Page 1 of 1",
+                Dock = DockStyle.Fill,
+                TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+            };
+            panelPagination.Controls.Add(pageLabel);
+
+            // Ensure layout order
             panelPagination.Controls.SetChildIndex(pageSizeComboBox, 0);
             panelPagination.Controls.SetChildIndex(nextButton, 1);
             panelPagination.Controls.SetChildIndex(pageLabel, 2);
             panelPagination.Controls.SetChildIndex(prevButton, 3);
         }
 
-        private void PopulateFilterComboBoxes()
+        private void PostsViewControl_Load(object? sender, EventArgs e)
         {
-            if (_dataService == null) return;
-
-            // Categories
-            categoryFilterComboBox.Items.Clear();
-            categoryFilterComboBox.Items.Add("All Categories");
-            foreach (var category in _dataService.GetCategories())
-            {
-                categoryFilterComboBox.Items.Add(category.Nicename);
-            }
-            categoryFilterComboBox.SelectedIndex = 0;
-
-            // Tags
-            tagFilterComboBox.Items.Clear();
-            tagFilterComboBox.Items.Add("All Tags");
-            foreach (var tag in _dataService.GetTags())
-            {
-                tagFilterComboBox.Items.Add(tag.Nicename);
-            }
-            tagFilterComboBox.SelectedIndex = 0;
-
-            // Authors
-            authorFilterComboBox.Items.Clear();
-            authorFilterComboBox.Items.Add("All Authors");
-            foreach (var author in _dataService.GetAuthors())
-            {
-                authorFilterComboBox.Items.Add(author.Login); // Using Login for author filter
-            }
-            authorFilterComboBox.SelectedIndex = 0;
-
-            // Statuses are static, so no need to populate from DB
-        }
-
-        private void PostsViewControl_Load(object? sender, EventArgs e) // Made sender nullable
-        {
-            PopulateFilterComboBoxes(); // Populate filters before loading posts
+            PopulateFilterComboBoxes();
             LoadPosts();
         }
 
+        private void PopulateFilterComboBoxes()
+        {
+            // Always ensure base entries exist
+            categoryFilterComboBox.Items.Clear();
+            categoryFilterComboBox.Items.Add("All Categories");
+            categoryFilterComboBox.SelectedIndex = 0;
+
+            tagFilterComboBox.Items.Clear();
+            tagFilterComboBox.Items.Add("All Tags");
+            tagFilterComboBox.SelectedIndex = 0;
+
+            authorFilterComboBox.Items.Clear();
+            authorFilterComboBox.Items.Add("All Authors");
+            authorFilterComboBox.SelectedIndex = 0;
+
+            // If service is missing methods, just skip silently for now.
+            if (_dataService == null) return;
+
+            try
+            {
+                // These methods may not exist yet in your SQLiteDataService.
+                // Add them later and this will start working automatically.
+                var categories = TryGetCategories();
+                foreach (var c in categories)
+                    categoryFilterComboBox.Items.Add(c.Nicename);
+
+                var tags = TryGetTags();
+                foreach (var t in tags)
+                    tagFilterComboBox.Items.Add(t.Nicename);
+
+                var authors = TryGetAuthors();
+                foreach (var a in authors)
+                    authorFilterComboBox.Items.Add(a.Login);
+            }
+            catch
+            {
+                // Intentionally ignore until the service supports these.
+            }
+        }
+
+        // ---- Main load logic ----
         public void LoadPosts(string searchTerm = "")
         {
             if (_dataService == null) return;
 
-            // Get filter values from ComboBoxes
             string? categoryNicename = categoryFilterComboBox.SelectedItem?.ToString();
             if (categoryNicename == "All Categories") categoryNicename = null;
 
@@ -269,38 +304,32 @@ namespace WordpressExtractor.UserControls
             string? postStatus = statusFilterComboBox.SelectedItem?.ToString();
             if (postStatus == "All Statuses") postStatus = null;
 
+            // Ensure currentPage always valid
             totalPosts = _dataService.GetPostCount(searchTerm, categoryNicename, tagNicename, authorLogin, postStatus, currentSortColumn, currentSortOrder);
             totalPages = (int)Math.Ceiling((double)totalPosts / pageSize);
 
-            if (currentPage > totalPages && totalPages > 0)
-            {
-                currentPage = totalPages;
-            }
-            else if (totalPages == 0)
-            {
+            if (totalPages <= 0)
                 currentPage = 0;
-            }
-            else if (currentPage == 0 && totalPages > 0) // Handle case where currentPage might be 0 initially
-            {
+            else if (currentPage <= 0)
                 currentPage = 1;
-            }
+            else if (currentPage > totalPages)
+                currentPage = totalPages;
 
             int offset = (currentPage - 1) * pageSize;
-            if (offset < 0) offset = 0; // Ensure offset is not negative
+            if (offset < 0) offset = 0;
 
-            dataGridViewPosts.Columns.Clear(); // Clear existing columns if any
+            dataGridViewPosts.Columns.Clear();
 
-            // Define columns
-            AddOrUpdateColumn(dataGridViewPosts, "Title", "Title", true, 200);
-            AddOrUpdateColumn(dataGridViewPosts, "PostType", "Type", true, 80);
+            AddOrUpdateColumn(dataGridViewPosts, "Title", "Title", true, 220);
+            AddOrUpdateColumn(dataGridViewPosts, "PostType", "Type", true, 70);
             AddOrUpdateColumn(dataGridViewPosts, "PostDate", "Date", true, 120);
-            AddOrUpdateColumn(dataGridViewPosts, "Creator", "Author", true, 100);
+            AddOrUpdateColumn(dataGridViewPosts, "Creator", "Author", true, 110);
             AddOrUpdateColumn(dataGridViewPosts, "Status", "Status", true, 80);
-            AddOrUpdateColumn(dataGridViewPosts, "PostName", "Slug", true, 150); // Make PostName visible
-            AddOrUpdateColumn(dataGridViewPosts, "Link", "Link", false); // Keep Link hidden, but manage it
-            AddOrUpdateColumn(dataGridViewPosts, "PostId", "ID", false); // Keep PostId hidden
+            AddOrUpdateColumn(dataGridViewPosts, "PostName", "Slug", true, 170);
 
-            // Hide verbose/navigation properties
+            // Hidden
+            AddOrUpdateColumn(dataGridViewPosts, "Link", "Link", false);
+            AddOrUpdateColumn(dataGridViewPosts, "PostId", "ID", false);
             AddOrUpdateColumn(dataGridViewPosts, "CleanedHtmlSource", "Cleaned HTML", false);
             AddOrUpdateColumn(dataGridViewPosts, "ContentEncoded", "Content HTML", false);
             AddOrUpdateColumn(dataGridViewPosts, "Comments", "Comments", false);
@@ -313,25 +342,19 @@ namespace WordpressExtractor.UserControls
 
             UpdatePaginationControls();
 
-            // Visually indicate sort order after data binding
             foreach (DataGridViewColumn column in dataGridViewPosts.Columns)
-            {
                 column.HeaderCell.SortGlyphDirection = SortOrder.None;
-            }
-            // Find the column by its DataPropertyName
-            DataGridViewColumn? targetColumn = null;
+
+            // Show glyph on current sort column if present
             foreach (DataGridViewColumn col in dataGridViewPosts.Columns)
             {
                 if (col.DataPropertyName.Equals(currentSortColumn, StringComparison.OrdinalIgnoreCase))
                 {
-                    targetColumn = col;
+                    col.HeaderCell.SortGlyphDirection = (currentSortOrder == "ASC")
+                        ? SortOrder.Ascending
+                        : SortOrder.Descending;
                     break;
                 }
-            }
-            if (targetColumn != null)
-            {
-                targetColumn.HeaderCell.SortGlyphDirection = 
-                    (currentSortOrder == "ASC") ? SortOrder.Ascending : SortOrder.Descending;
             }
         }
 
@@ -339,341 +362,24 @@ namespace WordpressExtractor.UserControls
         {
             pageLabel.Text = totalPages > 0 ? $"Page {currentPage} of {totalPages}" : "No Posts";
             prevButton.Enabled = currentPage > 1;
-            nextButton.Enabled = currentPage < totalPages;
+            nextButton.Enabled = currentPage > 0 && currentPage < totalPages;
         }
 
-        private void dataGridViewPosts_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
-        {
-            if (e.ColumnIndex >= 0 && dataGridViewPosts.Columns[e.ColumnIndex].DataPropertyName != null)
-            {
-                string newSortColumn = dataGridViewPosts.Columns[e.ColumnIndex].DataPropertyName;
-
-                // Map UI column names to DB column names if they differ
-                // For now, assuming DataPropertyName matches DB column names directly for simplicity
-                // A more robust solution might use a dictionary mapping or attributes.
-                // Or better, ensure DataPropertyName values match the DB column names used in SQL queries.
-
-                if (currentSortColumn.Equals(newSortColumn, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Toggle sort order
-                    currentSortOrder = (currentSortOrder == "ASC") ? "DESC" : "ASC";
-                }
-                else
-                {
-                    // New column selected, default to ascending
-                    currentSortColumn = newSortColumn;
-                    currentSortOrder = "ASC";
-                }
-                
-                // Reset page to 1 when sorting changes
-                currentPage = 1;
-
-                LoadPosts(searchTextBox.Text.Trim()); // Reload posts with new sorting
-            }
-        }
-
-        private void dataGridViewPosts_SelectionChanged(object? sender, EventArgs e) // Made sender nullable
-        {
-            if (dataGridViewPosts.SelectedRows.Count > 0)
-            {
-                var selectedPost = dataGridViewPosts.SelectedRows[0].DataBoundItem as Post;
-                if (selectedPost != null)
-                {
-                    // Raise the event to notify parent form
-                    PostSelected?.Invoke(this, selectedPost.PostId);
-
-                    string contentToDisplay = selectedPost.CleanedHtmlSource;
-                    if (string.IsNullOrWhiteSpace(contentToDisplay))
-                    {
-                        contentToDisplay = selectedPost.ContentEncoded;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(contentToDisplay))
-                    {
-                        webBrowserPostContent.DocumentText = contentToDisplay;
-                    }
-                    else
-                    {
-                        webBrowserPostContent.DocumentText = "<html><body><h1>No content available.</h1></body></html>";
-                    }
-                }
-            }
-            else
-            {
-                PostSelected?.Invoke(this, -1); // Notify no post selected
-                webBrowserPostContent.DocumentText = ""; // Clear content if no post is selected
-            }
-        }
-
-        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
-            {
-                DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
-                if (column.DataPropertyName != null && dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value != null)
-                {
-                    string cellValue = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value.ToString() ?? string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return; // Don't filter on empty or N/A values
-                    }
-
-                    // Reset all filters first to ensure only the clicked filter is applied
-                    categoryFilterComboBox.SelectedIndex = 0;
-                    tagFilterComboBox.SelectedIndex = 0;
-                    authorFilterComboBox.SelectedIndex = 0;
-                    statusFilterComboBox.SelectedIndex = 0;
-
-                    switch (column.DataPropertyName)
-                    {
-                        case "Creator":
-                            // Find the author in the ComboBox and select it
-                            int authorIndex = authorFilterComboBox.FindStringExact(cellValue);
-                            if (authorIndex != ListBox.NoMatches)
-                            {
-                                authorFilterComboBox.SelectedIndex = authorIndex;
-                            }
-                            break;
-                        case "PostType":
-                            // Find the post type in the ComboBox (or directly apply)
-                            // Note: PostType is "post" or "page", which maps directly to statusfilterComboBox for some cases like "publish"
-                            // A more robust solution might be needed if postType and status are distinct filter types.
-                            int statusIndex = statusFilterComboBox.FindStringExact(cellValue); 
-                            if (statusIndex != ListBox.NoMatches)
-                            {
-                                statusFilterComboBox.SelectedIndex = statusIndex;
-                            }
-                            break;
-                        // For Categories and Tags, the DataPropertyName is just "Categories" or "Tags",
-                        // and the cell value is usually a concatenated string of nicenames or names.
-                        // This requires a more complex parsing logic or a change in how Categories/Tags are displayed.
-                        // For now, let's assume direct matching of a single nicename/name in the cell.
-                        case "Categories":
-                            int categoryIndex = categoryFilterComboBox.FindStringExact(cellValue);
-                            if (categoryIndex != ListBox.NoMatches)
-                            {
-                                categoryFilterComboBox.SelectedIndex = categoryIndex;
-                            }
-                            break;
-                        case "Tags":
-                            int tagIndex = tagFilterComboBox.FindStringExact(cellValue);
-                            if (tagIndex != ListBox.NoMatches)
-                            {
-                                tagFilterComboBox.SelectedIndex = tagIndex;
-                            }
-                            break;
-                    }
-                    currentPage = 1; // Reset to first page
-                    LoadPosts(searchTextBox.Text.Trim()); // Reload with new filter
-                }
-            }
-        }
-
-        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
-            {
-                DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
-                if (column.DataPropertyName != null && dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value != null)
-                {
-                    string cellValue = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value.ToString() ?? string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return; // Don't filter on empty or N/A values
-                    }
-
-                    // Reset all filters first to ensure only the clicked filter is applied
-                    categoryFilterComboBox.SelectedIndex = 0;
-                    tagFilterComboBox.SelectedIndex = 0;
-                    authorFilterComboBox.SelectedIndex = 0;
-                    statusFilterComboBox.SelectedIndex = 0;
-
-                    switch (column.DataPropertyName)
-                    {
-                        case "Creator":
-                            // Find the author in the ComboBox and select it
-                            int authorIndex = authorFilterComboBox.FindStringExact(cellValue);
-                            if (authorIndex != ListBox.NoMatches)
-                            {
-                                authorFilterComboBox.SelectedIndex = authorIndex;
-                            }
-                            break;
-                        case "PostType":
-                            // Find the post type in the ComboBox (or directly apply)
-                            // Note: PostType is "post" or "page", which maps directly to statusfilterComboBox for some cases like "publish"
-                            // A more robust solution might be needed if postType and status are distinct filter types.
-                            int statusIndex = statusFilterComboBox.FindStringExact(cellValue); 
-                            if (statusIndex != ListBox.NoMatches)
-                            {
-                                statusFilterComboBox.SelectedIndex = statusIndex;
-                            }
-                            break;
-                        // For Categories and Tags, the DataPropertyName is just "Categories" or "Tags",
-                        // and the cell value is usually a concatenated string of nicenames or names.
-                        // This requires a more complex parsing logic or a change in how Categories/Tags are displayed.
-                        // For now, let's assume direct matching of a single nicename/name in the cell.
-                        case "Categories":
-                            int categoryIndex = categoryFilterComboBox.FindStringExact(cellValue);
-                            if (categoryIndex != ListBox.NoMatches)
-                            {
-                                categoryFilterComboBox.SelectedIndex = categoryIndex;
-                            }
-                            break;
-                        case "Tags":
-                            int tagIndex = tagFilterComboBox.FindStringExact(cellValue);
-                            if (tagIndex != ListBox.NoMatches)
-                            {
-                                tagFilterComboBox.SelectedIndex = tagIndex;
-                            }
-                            break;
-                    }
-                    currentPage = 1; // Reset to first page
-                    LoadPosts(searchTextBox.Text.Trim()); // Reload with new filter
-                }
-            }
-        }
-
-        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
-            {
-                DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
-                if (column.DataPropertyName != null && dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value != null)
-                {
-                    string cellValue = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value.ToString() ?? string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return; // Don't filter on empty or N/A values
-                    }
-
-                    // Reset all filters first to ensure only the clicked filter is applied
-                    categoryFilterComboBox.SelectedIndex = 0;
-                    tagFilterComboBox.SelectedIndex = 0;
-                    authorFilterComboBox.SelectedIndex = 0;
-                    statusFilterComboBox.SelectedIndex = 0;
-
-                    switch (column.DataPropertyName)
-                    {
-                        case "Creator":
-                            // Find the author in the ComboBox and select it
-                            int authorIndex = authorFilterComboBox.FindStringExact(cellValue);
-                            if (authorIndex != ListBox.NoMatches)
-                            {
-                                authorFilterComboBox.SelectedIndex = authorIndex;
-                            }
-                            break;
-                        case "PostType":
-                            // Find the post type in the ComboBox (or directly apply)
-                            // Note: PostType is "post" or "page", which maps directly to statusfilterComboBox for some cases like "publish"
-                            // A more robust solution might be needed if postType and status are distinct filter types.
-                            int statusIndex = statusFilterComboBox.FindStringExact(cellValue); 
-                            if (statusIndex != ListBox.NoMatches)
-                            {
-                                statusFilterComboBox.SelectedIndex = statusIndex;
-                            }
-                            break;
-                        // For Categories and Tags, the DataPropertyName is just "Categories" or "Tags",
-                        // and the cell value is usually a concatenated string of nicenames or names.
-                        // This requires a more complex parsing logic or a change in how Categories/Tags are displayed.
-                        // For now, let's assume direct matching of a single nicename/name in the cell.
-                        case "Categories":
-                            int categoryIndex = categoryFilterComboBox.FindStringExact(cellValue);
-                            if (categoryIndex != ListBox.NoMatches)
-                            {
-                                categoryFilterComboBox.SelectedIndex = categoryIndex;
-                            }
-                            break;
-                        case "Tags":
-                            int tagIndex = tagFilterComboBox.FindStringExact(cellValue);
-                            if (tagIndex != ListBox.NoMatches)
-                            {
-                                tagFilterComboBox.SelectedIndex = tagIndex;
-                            }
-                            break;
-                    }
-                    currentPage = 1; // Reset to first page
-                    LoadPosts(searchTextBox.Text.Trim()); // Reload with new filter
-                }
-            }
-        }
-
-        private void searchButton_Click(object? sender, EventArgs e) // Made sender nullable
-        {
-            currentPage = 1; // Reset to first page on new search
-            LoadPosts(searchTextBox.Text.Trim());
-        }
-
-        private void exportMarkdownButton_Click(object? sender, EventArgs e) // Made sender nullable
-        {
-            if (dataGridViewPosts.SelectedRows.Count > 0)
-            {
-                var selectedPost = dataGridViewPosts.SelectedRows[0].DataBoundItem as Post;
-                if (selectedPost != null)
-                {
-                    string htmlContent = selectedPost.CleanedHtmlSource;
-                    if (string.IsNullOrWhiteSpace(htmlContent))
-                    {
-                        htmlContent = selectedPost.ContentEncoded;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(htmlContent))
-                    {
-                        // Convert HTML to Markdown (using an external tool/library if Markdig is not suitable)
-                        // For now, let's just save the HTML as a text file.
-                        // If Markdig was needed, it would be installed here.
-                        // string markdownContent = Markdown.ToMarkdown(htmlContent, new MarkdownPipelineBuilder().Build());
-                        string markdownContent = ConvertHtmlToMarkdownSimple(htmlContent);
-
-
-                        using (SaveFileDialog saveFileDialog = new SaveFileDialog())
-                        {
-                            saveFileDialog.Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*";
-                            saveFileDialog.FileName = $"{selectedPost.PostName}.md";
-                            saveFileDialog.Title = "Save Markdown File";
-
-                            if (saveFileDialog.ShowDialog() == DialogResult.OK)
-                            {
-                                try
-                                {
-                                    File.WriteAllText(saveFileDialog.FileName, markdownContent);
-                                    MessageBox.Show("Export successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                }
-                                catch (Exception ex)
-                                {
-                                    MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("No content available to export for the selected post.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("Please select a post to export.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
-
+        // ---- Events ----
         private void filterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            currentPage = 1; // Reset to first page on new filter selection
+            currentPage = 1;
             LoadPosts(searchTextBox.Text.Trim());
         }
 
-        // Simple HTML to Markdown conversion (very basic, can be improved)
-        private string ConvertHtmlToMarkdownSimple(string html)
+        private void pageSizeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            // Remove HTML tags using regex
-            string plainText = System.Text.RegularExpressions.Regex.Replace(html, "<[^>]*>", "");
-            // Replace common HTML entities
-            plainText = plainText.Replace("&nbsp;", " ").Replace("&amp;", "&").Replace("&lt;", "<").Replace("&gt;", ">");
-            return plainText;
+            if (int.TryParse(pageSizeComboBox.SelectedItem?.ToString(), out int newSize))
+            {
+                pageSize = newSize;
+                currentPage = 1;
+                LoadPosts(searchTextBox.Text.Trim());
+            }
         }
 
         private void prevButton_Click(object? sender, EventArgs e)
@@ -681,7 +387,7 @@ namespace WordpressExtractor.UserControls
             if (currentPage > 1)
             {
                 currentPage--;
-                LoadPosts();
+                LoadPosts(searchTextBox.Text.Trim());
             }
         }
 
@@ -690,58 +396,227 @@ namespace WordpressExtractor.UserControls
             if (currentPage < totalPages)
             {
                 currentPage++;
-                LoadPosts();
+                LoadPosts(searchTextBox.Text.Trim());
             }
         }
 
-        private void pageSizeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        private void searchButton_Click(object? sender, EventArgs e)
         {
-            if (pageSizeComboBox.SelectedItem != null)
-            {
-                if (int.TryParse(pageSizeComboBox.SelectedItem.ToString(), out int newPageSize))
-                {
-                    pageSize = newPageSize;
-                    currentPage = 1; // Reset to first page when page size changes
-                    LoadPosts();
-                }
-            }
+            currentPage = 1;
+            LoadPosts(searchTextBox.Text.Trim());
         }
 
-        private void AddOrUpdateColumn(DataGridView dgv, string dataPropertyName, string headerText, bool visible, int? width = null)
+        private void dataGridViewPosts_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
         {
-            if (!dgv.Columns.Contains(dataPropertyName))
-            {
-                DataGridViewTextBoxColumn column = new DataGridViewTextBoxColumn();
-                column.DataPropertyName = dataPropertyName;
-                column.HeaderText = headerText;
-                column.Name = dataPropertyName; // Use DataPropertyName as Name for easier lookup
-                column.Visible = visible;
-                if (width.HasValue)
-                {
-                    column.Width = width.Value;
-                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; // Manual width
-                }
-                else
-                {
-                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                }
-                dgv.Columns.Add(column);
-            }
+            if (e.ColumnIndex < 0) return;
+
+            var col = dataGridViewPosts.Columns[e.ColumnIndex];
+            if (col.DataPropertyName == null) return;
+
+            string newSortColumn = col.DataPropertyName;
+
+            if (currentSortColumn.Equals(newSortColumn, StringComparison.OrdinalIgnoreCase))
+                currentSortOrder = (currentSortOrder == "ASC") ? "DESC" : "ASC";
             else
             {
-                // Update existing column properties
-                dgv.Columns[dataPropertyName]!.HeaderText = headerText;
-                dgv.Columns[dataPropertyName]!.Visible = visible;
-                if (width.HasValue)
+                currentSortColumn = newSortColumn;
+                currentSortOrder = "ASC";
+            }
+
+            currentPage = 1;
+            LoadPosts(searchTextBox.Text.Trim());
+        }
+
+        private void dataGridViewPosts_SelectionChanged(object? sender, EventArgs e)
+        {
+            if (dataGridViewPosts.SelectedRows.Count <= 0)
+            {
+                PostSelected?.Invoke(this, -1);
+                webBrowserPostContent.DocumentText = "";
+                return;
+            }
+
+            var selectedPost = dataGridViewPosts.SelectedRows[0].DataBoundItem as Post;
+            if (selectedPost == null) return;
+
+            PostSelected?.Invoke(this, selectedPost.PostId);
+
+            string contentToDisplay = selectedPost.CleanedHtmlSource;
+            if (string.IsNullOrWhiteSpace(contentToDisplay))
+                contentToDisplay = selectedPost.ContentEncoded;
+
+            webBrowserPostContent.DocumentText = !string.IsNullOrWhiteSpace(contentToDisplay)
+                ? contentToDisplay
+                : "<html><body><h3>No content available.</h3></body></html>";
+        }
+
+        private void dataGridViewPosts_CellContentClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            DataGridViewColumn column = dataGridViewPosts.Columns[e.ColumnIndex];
+            var val = dataGridViewPosts[e.ColumnIndex, e.RowIndex].Value;
+            if (val == null || column.DataPropertyName == null) return;
+
+            string cellValue = val.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(cellValue) || cellValue.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            // Reset filters
+            categoryFilterComboBox.SelectedIndex = 0;
+            tagFilterComboBox.SelectedIndex = 0;
+            authorFilterComboBox.SelectedIndex = 0;
+            statusFilterComboBox.SelectedIndex = 0;
+
+            switch (column.DataPropertyName)
+            {
+                case "Creator":
+                    {
+                        int idx = authorFilterComboBox.FindStringExact(cellValue);
+                        if (idx != ListBox.NoMatches) authorFilterComboBox.SelectedIndex = idx;
+                        break;
+                    }
+                case "Status":
+                    {
+                        int idx = statusFilterComboBox.FindStringExact(cellValue);
+                        if (idx != ListBox.NoMatches) statusFilterComboBox.SelectedIndex = idx;
+                        break;
+                    }
+                // NOTE: Categories/Tags display depends on how your Post model binds these.
+            }
+
+            currentPage = 1;
+            LoadPosts(searchTextBox.Text.Trim());
+        }
+
+        private void exportMarkdownButton_Click(object? sender, EventArgs e)
+        {
+            if (dataGridViewPosts.SelectedRows.Count <= 0)
+            {
+                MessageBox.Show("Select a post first.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var selectedPost = dataGridViewPosts.SelectedRows[0].DataBoundItem as Post;
+            if (selectedPost == null)
+                return;
+
+            string htmlContent = selectedPost.CleanedHtmlSource;
+            if (string.IsNullOrWhiteSpace(htmlContent))
+                htmlContent = selectedPost.ContentEncoded;
+
+            if (string.IsNullOrWhiteSpace(htmlContent))
+            {
+                MessageBox.Show("This post has no content to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string markdownContent = ConvertHtmlToMarkdownSimple(htmlContent);
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*";
+                saveFileDialog.FileName = $"{SafeFileName(selectedPost.PostName ?? selectedPost.Title ?? "post")}.md";
+                saveFileDialog.Title = "Save Markdown File";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    dgv.Columns[dataPropertyName]!.Width = width.Value;
-                    dgv.Columns[dataPropertyName]!.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                }
-                else
-                {
-                    dgv.Columns[dataPropertyName]!.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                    try
+                    {
+                        File.WriteAllText(saveFileDialog.FileName, markdownContent, Encoding.UTF8);
+                        MessageBox.Show("Export successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            "An error occurred while saving the Markdown file.\n\n" + ex.Message,
+                            "Export Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
                 }
             }
+        }
+
+        // ---- Helpers ----
+        private static void AddOrUpdateColumn(DataGridView grid, string dataPropertyName, string headerText, bool visible, int? width = null)
+        {
+            var col = new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = dataPropertyName,
+                HeaderText = headerText,
+                Name = dataPropertyName,
+                Visible = visible,
+                ReadOnly = true
+            };
+
+            if (width.HasValue)
+                col.Width = width.Value;
+
+            grid.Columns.Add(col);
+        }
+
+        /// <summary>
+        /// Simple HTML -> Markdown-ish conversion (not perfect, but good enough until you add a real converter).
+        /// </summary>
+        private static string ConvertHtmlToMarkdownSimple(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+
+            string text = html;
+
+            // Basic block tags -> newlines
+            text = Regex.Replace(text, @"<(br|BR)\s*/?>", "\n");
+            text = Regex.Replace(text, @"</(p|div|h1|h2|h3|h4|h5|h6)>", "\n\n", RegexOptions.IgnoreCase);
+
+            // Headings
+            text = Regex.Replace(text, @"<h1[^>]*>(.*?)</h1>", "# $1\n\n", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            text = Regex.Replace(text, @"<h2[^>]*>(.*?)</h2>", "## $1\n\n", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            text = Regex.Replace(text, @"<h3[^>]*>(.*?)</h3>", "### $1\n\n", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            // Bold / italic
+            text = Regex.Replace(text, @"<(strong|b)[^>]*>(.*?)</(strong|b)>", "**$2**", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            text = Regex.Replace(text, @"<(em|i)[^>]*>(.*?)</(em|i)>", "*$2*", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            // Links
+            text = Regex.Replace(text, @"<a[^>]*href\s*=\s*[""']([^""']+)[""'][^>]*>(.*?)</a>", "[$2]($1)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            // Strip remaining tags
+            text = Regex.Replace(text, @"<[^>]+>", string.Empty);
+
+            // Decode common entities
+            text = System.Net.WebUtility.HtmlDecode(text);
+
+            // Normalize whitespace
+            text = Regex.Replace(text, @"\n{3,}", "\n\n");
+            return text.Trim();
+        }
+
+        private static string SafeFileName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return "post";
+            foreach (char c in Path.GetInvalidFileNameChars())
+                raw = raw.Replace(c, '_');
+            return raw.Trim();
+        }
+
+        // These are placeholders until your SQLiteDataService implements them.
+        private List<Category> TryGetCategories()
+        {
+            // If you later add _dataService.GetCategories(), replace this method body.
+            return new List<Category>();
+        }
+
+        private List<Tag> TryGetTags()
+        {
+            // If you later add _dataService.GetTags(), replace this method body.
+            return new List<Tag>();
+        }
+
+        private List<Author> TryGetAuthors()
+        {
+            // If you later add _dataService.GetAuthors(), replace this method body.
+            return new List<Author>();
         }
     }
 }

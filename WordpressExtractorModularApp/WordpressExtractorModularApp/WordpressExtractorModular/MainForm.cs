@@ -43,9 +43,25 @@ namespace WordpressExtractorModular
             }
             catch (FileNotFoundException ex)
             {
-                MessageBox.Show(ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                // Optionally close the application if the database is critical
-                // Application.Exit();
+                MessageBox.Show(
+                    "Database file not found. Please import a WordPress XML file to create and populate the database.\n\n" +
+                    $"Details: {ex.Message}",
+                    "Database Not Found",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                _dataService = null;
+                _xmlProcessor = null; // Ensure XML processor is also null if data service failed
+                // Application will continue, but tabs might be empty or disabled.
+            }
+            catch (Exception ex) // Catch other potential exceptions during data service initialization
+            {
+                MessageBox.Show(
+                    $"An unexpected error occurred during database initialization: {ex.Message}",
+                    "Database Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                _dataService = null;
+                _xmlProcessor = null;
             }
 
             SetupMainUI();
@@ -219,7 +235,13 @@ namespace WordpressExtractorModular
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Error importing XML: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show(
+                            $"An error occurred while importing the WordPress XML file. Please check the file format and try again.\n\n" +
+                            $"Details: {ex.Message}",
+                            "Import Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        // No need to refresh controls on error, as data might be incomplete or invalid
                     }
                 }
             }

@@ -1,3 +1,10 @@
+# Dependencies
+/node_modules
+/venv
+/.venv
+/env
+/.env
+
 # Database
 *.db
 *.sqlite3
@@ -14,6 +21,10 @@ uploads/
 all_blog_posts/
 all_pages/
 
+# C# build artifacts
+[Bb]in/
+[Oo]bj/
+
 # Python cache
 __pycache__/
 *.pyc
@@ -22,20 +33,17 @@ __pycache__/
 .idea/
 .vscode/
 
-# Build artifacts
+# Build artifacts (general)
 dist/
 build/
 *.egg-info/
 
-# Dependencies
-venv/
-.venv/
-env/
-.env
-
-# OS-specific
+# OS-specific & Tooling
 .DS_Store
 Thumbs.db
 gemini.md
-.gemini-clipboard/*
+.gemini-clipboard/
 .gemini-clipboard
+
+# Logs
+*.log

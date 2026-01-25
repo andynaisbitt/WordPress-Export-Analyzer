@@ -243,7 +243,6 @@ namespace WordpressExtractor.Services
             }
         }
 
-        #pragma warning disable CS8603 // Possible null reference return.
         private DateTime? ParseDateTime(string? dateTimeString)
         {
             if (DateTime.TryParse(dateTimeString, out DateTime result))
@@ -252,7 +251,6 @@ namespace WordpressExtractor.Services
             }
             return null;
         }
-        #pragma warning restore CS8603 // Possible null reference return.
 
         private string GetCleanedHtmlFromFile(string postName, string postType)
         {
@@ -289,8 +287,6 @@ namespace WordpressExtractor.Services
             return cleanedContent;
         }
 
-        #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-        #pragma warning disable CS8604 // Possible null reference argument for parameter 'value' in 'bool Dictionary<TKey, TValue>.ContainsKey(TKey value)'.
         private void ExtractAndSaveInternalLinks(int sourcePostId, string htmlContent)
         {
             if (string.IsNullOrWhiteSpace(htmlContent)) return;
@@ -312,8 +308,7 @@ namespace WordpressExtractor.Services
                     {
                         // Assuming base_site_url is known or can be extracted from XML for more robust check
                         // For now, let's just check against known post_names (slugs)
-                        string? slug = uri.Segments.LastOrDefault();
-                        string finalSlug = slug?.Replace(".html", string.Empty) ?? string.Empty; // Handle null slug
+                        string finalSlug = uri.Segments.LastOrDefault()?.Replace(".html", string.Empty) ?? string.Empty; // Handle null slug
                         if (!string.IsNullOrEmpty(finalSlug) && _postNameIdMap.ContainsKey(finalSlug))
                         {
                             int targetPostId = _postNameIdMap[finalSlug];
@@ -343,7 +338,5 @@ namespace WordpressExtractor.Services
                 }
             }
         }
-        #pragma warning restore CS8604 // Possible null reference argument for parameter 'value' in 'bool Dictionary<TKey, TValue>.ContainsKey(TKey value)'.
-        #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
     }
 }
