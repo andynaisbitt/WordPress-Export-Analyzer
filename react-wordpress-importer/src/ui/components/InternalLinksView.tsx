@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { InternalLink } from '../../core/domain/types/InternalLink';
+import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
 
 const InternalLinksView: React.FC = () => {
   const [allInternalLinks, setAllInternalLinks] = useState<InternalLink[]>([]);
@@ -10,6 +11,7 @@ const InternalLinksView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAll, setShowAll] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
 
   useEffect(() => {
     const fetchInternalLinks = async () => {
@@ -30,6 +32,53 @@ const InternalLinksView: React.FC = () => {
 
     fetchInternalLinks();
   }, []);
+
+  const rebuildLinks = async () => {
+    setRebuilding(true);
+    try {
+      const dbService = new IndexedDbService();
+      await dbService.openDatabase();
+      const posts = await dbService.getPosts();
+      const siteInfo = await dbService.getSiteInfo();
+      const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
+      const linkData = buildInternalAndExternalLinks(posts, siteUrl);
+      await dbService.clearStore('internalLinks');
+      await dbService.clearStore('externalLinks');
+      await dbService.addData('internalLinks', linkData.internalLinks);
+      await dbService.addData('externalLinks', linkData.externalLinks);
+      const refreshed = await dbService.getInternalLinks();
+      setAllInternalLinks(refreshed);
+    } catch (err) {
+      console.error('Error rebuilding links:', err);
+      setError('Failed to rebuild links.');
+    } finally {
+      setRebuilding(false);
+    }
+  };
+
+  const downloadCsv = () => {
+    const headers = ['id', 'source_post_id', 'target_post_id', 'anchor_text', 'source_title', 'target_title', 'target_slug', 'target_status'];
+    const rows = filteredInternalLinks.map((link) => [
+      link.Id,
+      link.SourcePostId,
+      link.TargetPostId,
+      link.AnchorText,
+      link.SourcePostTitle,
+      link.TargetPostTitle,
+      link.TargetPostName,
+      link.TargetPostStatus,
+    ]);
+    const csv = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `internal-links-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const filteredInternalLinks = useMemo(() => {
     if (!searchTerm) {
@@ -71,6 +120,14 @@ const InternalLinksView: React.FC = () => {
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
       />
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        <button className="btn-secondary" onClick={rebuildLinks} disabled={rebuilding}>
+          {rebuilding ? 'Rebuilding...' : 'Rebuild Links'}
+        </button>
+        <button className="btn-secondary" onClick={downloadCsv}>
+          Export CSV
+        </button>
+      </div>
       {filteredInternalLinks.length > 300 && (
         <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
           Showing {displayLinks.length} of {filteredInternalLinks.length}. Rendering too many rows can be slow.

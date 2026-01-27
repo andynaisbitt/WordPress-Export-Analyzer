@@ -19,6 +19,7 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
   const [pageSize, setPageSize] = useState(25);
   const [statusFilter, setStatusFilter] = useState('all');
   const [authorFilter, setAuthorFilter] = useState('all');
+  const [searchMode, setSearchMode] = useState<'all' | 'title' | 'content' | 'regex'>('all');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +47,33 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
       return allPosts;
     }
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    if (searchMode === 'regex') {
+      try {
+        const regex = new RegExp(searchTerm, 'i');
+        return allPosts.filter((post) =>
+          regex.test(post.Title) ||
+          regex.test(post.Creator) ||
+          regex.test(post.Status) ||
+          regex.test(post.PostName) ||
+          regex.test(post.ContentEncoded || '') ||
+          regex.test(post.Excerpt || '')
+        );
+      } catch {
+        return [];
+      }
+    }
+    if (searchMode === 'title') {
+      return allPosts.filter((post) =>
+        post.Title.toLowerCase().includes(lowerCaseSearchTerm) ||
+        post.PostName.toLowerCase().includes(lowerCaseSearchTerm)
+      );
+    }
+    if (searchMode === 'content') {
+      return allPosts.filter((post) =>
+        (post.ContentEncoded || '').toLowerCase().includes(lowerCaseSearchTerm) ||
+        (post.Excerpt || '').toLowerCase().includes(lowerCaseSearchTerm)
+      );
+    }
     return allPosts.filter(post =>
       post.Title.toLowerCase().includes(lowerCaseSearchTerm) ||
       post.Creator.toLowerCase().includes(lowerCaseSearchTerm) ||
@@ -53,9 +81,8 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
       post.PostName.toLowerCase().includes(lowerCaseSearchTerm) ||
       (post.ContentEncoded || '').toLowerCase().includes(lowerCaseSearchTerm) ||
       (post.Excerpt || '').toLowerCase().includes(lowerCaseSearchTerm)
-      // Add more fields to search as needed
     );
-  }, [allPosts, searchTerm]);
+  }, [allPosts, searchTerm, searchMode]);
 
   const filteredByMeta = useMemo(() => {
     return filteredPosts.filter((post) => {
@@ -101,6 +128,12 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
         style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
       />
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <select value={searchMode} onChange={(e) => { setSearchMode(e.target.value as typeof searchMode); setPage(1); }}>
+          <option value="all">Search all</option>
+          <option value="title">Title/Slug</option>
+          <option value="content">Content/Excerpt</option>
+          <option value="regex">Regex</option>
+        </select>
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
           <option value="all">All statuses</option>
           {statuses.map((status) => (

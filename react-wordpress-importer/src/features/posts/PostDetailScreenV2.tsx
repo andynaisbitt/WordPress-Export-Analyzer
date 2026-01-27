@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { useToastV2 as useToast } from '../../ui/toast/useToastV2';
 import { Post } from '../../core/domain/types/Post';
+import TurndownService from 'turndown';
 
 const PostDetailScreenV2 = () => {
   const { id } = useParams();
@@ -12,6 +13,7 @@ const PostDetailScreenV2 = () => {
   const [post, setPost] = useState<Post | null>(null);
   const [draft, setDraft] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'html' | 'markdown' | 'preview'>('preview');
   const backTo = (location.state as { backTo?: string } | undefined)?.backTo ?? '/posts';
   const backLabel = backTo === '/pages' ? 'Back to Pages' : 'Back to Posts';
 
@@ -50,6 +52,15 @@ const PostDetailScreenV2 = () => {
   if (loading) {
     return <div>Loading post...</div>;
   }
+
+  const markdown = useMemo(() => {
+    const html = draft?.ContentEncoded || draft?.CleanedHtmlSource || '';
+    const turndown = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+    });
+    return turndown.turndown(html);
+  }, [draft?.ContentEncoded, draft?.CleanedHtmlSource]);
 
   if (!post || !draft) {
     return (
@@ -115,17 +126,35 @@ const PostDetailScreenV2 = () => {
       </div>
 
       <div className="post-detail-editor">
-        <label>Content (HTML)</label>
-        <textarea
-          value={draft.ContentEncoded || draft.CleanedHtmlSource || ''}
-          onChange={(event) =>
-            setDraft({
-              ...draft,
-              ContentEncoded: event.target.value,
-              CleanedHtmlSource: event.target.value,
-            })
-          }
-        />
+        <div className="post-detail-tabs">
+          <button className={`btn-secondary${viewMode === 'preview' ? ' qa-active' : ''}`} onClick={() => setViewMode('preview')}>
+            HTML Preview
+          </button>
+          <button className={`btn-secondary${viewMode === 'html' ? ' qa-active' : ''}`} onClick={() => setViewMode('html')}>
+            HTML Source
+          </button>
+          <button className={`btn-secondary${viewMode === 'markdown' ? ' qa-active' : ''}`} onClick={() => setViewMode('markdown')}>
+            Markdown
+          </button>
+        </div>
+        {viewMode === 'preview' && (
+          <div className="post-html-preview" dangerouslySetInnerHTML={{ __html: draft.ContentEncoded || draft.CleanedHtmlSource || '' }} />
+        )}
+        {viewMode === 'html' && (
+          <textarea
+            value={draft.ContentEncoded || draft.CleanedHtmlSource || ''}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                ContentEncoded: event.target.value,
+                CleanedHtmlSource: event.target.value,
+              })
+            }
+          />
+        )}
+        {viewMode === 'markdown' && (
+          <textarea value={markdown} readOnly />
+        )}
       </div>
 
       {draft.Link && (

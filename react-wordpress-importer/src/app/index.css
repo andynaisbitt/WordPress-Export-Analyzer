@@ -562,6 +562,21 @@ input[type="text"] {
   gap: 8px;
 }
 
+.post-detail-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.post-html-preview {
+  min-height: 320px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  overflow: auto;
+}
+
 .post-detail-editor textarea {
   min-height: 320px;
   border-radius: var(--radius-md);

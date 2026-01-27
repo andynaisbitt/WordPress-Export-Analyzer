@@ -92,6 +92,25 @@ export class IndexedDbService {
         });
     }
 
+    async clearStore(storeName: string): Promise<void> {
+        if (!this.db) {
+            await this.openDatabase();
+        }
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error("Database not open."));
+                return;
+            }
+
+            const transaction = this.db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.clear();
+
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => reject((event.target as IDBRequest).error);
+        });
+    }
+
     async addData<T>(storeName: string, data: T[]): Promise<void> {
         if (!this.db) {
             await this.openDatabase();
