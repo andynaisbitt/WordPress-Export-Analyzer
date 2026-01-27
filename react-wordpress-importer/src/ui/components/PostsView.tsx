@@ -15,6 +15,10 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [authorFilter, setAuthorFilter] = useState('all');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,10 +49,37 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
     return allPosts.filter(post =>
       post.Title.toLowerCase().includes(lowerCaseSearchTerm) ||
       post.Creator.toLowerCase().includes(lowerCaseSearchTerm) ||
-      post.Status.toLowerCase().includes(lowerCaseSearchTerm)
+      post.Status.toLowerCase().includes(lowerCaseSearchTerm) ||
+      post.PostName.toLowerCase().includes(lowerCaseSearchTerm) ||
+      (post.ContentEncoded || '').toLowerCase().includes(lowerCaseSearchTerm) ||
+      (post.Excerpt || '').toLowerCase().includes(lowerCaseSearchTerm)
       // Add more fields to search as needed
     );
   }, [allPosts, searchTerm]);
+
+  const filteredByMeta = useMemo(() => {
+    return filteredPosts.filter((post) => {
+      if (statusFilter !== 'all' && post.Status !== statusFilter) return false;
+      if (authorFilter !== 'all' && post.Creator !== authorFilter) return false;
+      return true;
+    });
+  }, [filteredPosts, statusFilter, authorFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredByMeta.length / pageSize));
+  const pagedPosts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredByMeta.slice(start, start + pageSize);
+  }, [filteredByMeta, page, pageSize]);
+
+  const statuses = useMemo(() => {
+    const unique = new Set(allPosts.map((post) => post.Status).filter(Boolean));
+    return Array.from(unique);
+  }, [allPosts]);
+
+  const authors = useMemo(() => {
+    const unique = new Set(allPosts.map((post) => post.Creator).filter(Boolean));
+    return Array.from(unique);
+  }, [allPosts]);
 
 
   if (loading) {
@@ -61,7 +92,7 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
 
   return (
     <div className="posts-view-container">
-      <h2>{title ?? (postType === 'page' ? 'Pages' : 'Posts')} ({filteredPosts.length} / {allPosts.length})</h2>
+      <h2>{title ?? (postType === 'page' ? 'Pages' : 'Posts')} ({filteredByMeta.length} / {allPosts.length})</h2>
       <input
         type="text"
         placeholder={`Search ${postType === 'page' ? 'pages' : 'posts'}...`}
@@ -69,7 +100,32 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
       />
-      {filteredPosts.length === 0 && !loading && !error ? (
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+          <option value="all">All statuses</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+        <select value={authorFilter} onChange={(e) => { setAuthorFilter(e.target.value); setPage(1); }}>
+          <option value="all">All authors</option>
+          {authors.map((author) => (
+            <option key={author} value={author}>
+              {author}
+            </option>
+          ))}
+        </select>
+        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
+          {[10, 25, 50, 100].map((size) => (
+            <option key={size} value={size}>
+              {size} / page
+            </option>
+          ))}
+        </select>
+      </div>
+      {filteredByMeta.length === 0 && !loading && !error ? (
         <p>No posts found matching your search criteria.</p>
       ) : (
         <table>
@@ -84,7 +140,7 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
             </tr>
           </thead>
           <tbody>
-            {filteredPosts.map(post => (
+            {pagedPosts.map(post => (
               <tr key={post.PostId}>
                 <td>{post.PostId}</td>
                 <td>{post.Title}</td>
@@ -103,6 +159,19 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
             ))}
           </tbody>
         </table>
+      )}
+      {filteredByMeta.length > pageSize && (
+        <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+            Prev
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+            Next
+          </button>
+        </div>
       )}
     </div>
   );

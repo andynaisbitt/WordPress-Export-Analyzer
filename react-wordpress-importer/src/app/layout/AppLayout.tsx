@@ -16,6 +16,7 @@ const AppLayout = () => {
     '/attachments': 'Attachments',
     '/post-meta': 'Post Meta',
     '/internal-links': 'Internal Links',
+    '/external-links': 'External Links',
     '/media-manifest': 'Media Manifest',
     '/cleanup': 'Cleanup',
     '/content-qa': 'Content QA',

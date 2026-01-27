@@ -25,6 +25,8 @@ const navLinks = [
 
   { path: '/internal-links', label: 'Internal Links' },
 
+  { path: '/external-links', label: 'External Links' },
+
   { path: '/media-manifest', label: 'Media Manifest' },
 
   { path: '/cleanup', label: 'Cleanup' },

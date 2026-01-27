@@ -54,6 +54,7 @@ export class DataMapper {
     const siteInfo: SiteInfo[] = [
       { Key: 'title', Value: getText(channel.title) || 'Untitled Site' },
       { Key: 'description', Value: getText(channel.description) || '' },
+      { Key: 'link', Value: getText(channel.link) || '' },
     ];
 
     const authors: Author[] = toArray(channel['wp:author']).map((a: any) => ({

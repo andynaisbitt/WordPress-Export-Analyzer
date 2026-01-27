@@ -7,11 +7,12 @@ import { Author } from '../../core/domain/types/Author';
 import { Comment } from '../../core/domain/types/Comment';
 import { Attachment } from '../../core/domain/types/Attachment';
 import { InternalLink } from '../../core/domain/types/InternalLink';
+import { ExternalLink } from '../../core/domain/types/ExternalLink';
 import { PostMeta } from '../../core/domain/types/PostMeta';
 import { SiteInfo } from '../../core/domain/types/SiteInfo';
 
 const DB_NAME = 'WordPressAnalyzerDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export class IndexedDbService {
     private db: IDBDatabase | null = null;
@@ -22,16 +23,23 @@ export class IndexedDbService {
 
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
+                const ensureStore = (name: string, options: IDBObjectStoreParameters) => {
+                    if (!db.objectStoreNames.contains(name)) {
+                        db.createObjectStore(name, options);
+                    }
+                };
+
                 // Create object stores for each data type
-                db.createObjectStore('posts', { keyPath: 'PostId' });
-                db.createObjectStore('categories', { keyPath: 'TermId' });
-                db.createObjectStore('tags', { keyPath: 'TermId' });
-                db.createObjectStore('authors', { keyPath: 'AuthorId' });
-                db.createObjectStore('comments', { keyPath: 'CommentId' });
-                db.createObjectStore('attachments', { keyPath: 'PostId' }); // Assuming PostId as key for attachments
-                db.createObjectStore('internalLinks', { keyPath: 'Id', autoIncrement: true });
-                db.createObjectStore('postMeta', { keyPath: 'MetaId', autoIncrement: true });
-                db.createObjectStore('siteInfo', { keyPath: 'Key' });
+                ensureStore('posts', { keyPath: 'PostId' });
+                ensureStore('categories', { keyPath: 'TermId' });
+                ensureStore('tags', { keyPath: 'TermId' });
+                ensureStore('authors', { keyPath: 'AuthorId' });
+                ensureStore('comments', { keyPath: 'CommentId' });
+                ensureStore('attachments', { keyPath: 'PostId' }); // Assuming PostId as key for attachments
+                ensureStore('internalLinks', { keyPath: 'Id', autoIncrement: true });
+                ensureStore('externalLinks', { keyPath: 'Id', autoIncrement: true });
+                ensureStore('postMeta', { keyPath: 'MetaId', autoIncrement: true });
+                ensureStore('siteInfo', { keyPath: 'Key' });
             };
 
             request.onsuccess = (event) => {
@@ -58,7 +66,8 @@ export class IndexedDbService {
             }
 
             const transaction = this.db.transaction([
-                'posts', 'categories', 'tags', 'authors', 'comments', 'attachments', 'internalLinks', 'postMeta', 'siteInfo'
+                'posts', 'categories', 'tags', 'authors', 'comments', 'attachments',
+                'internalLinks', 'externalLinks', 'postMeta', 'siteInfo'
             ], 'readwrite');
 
             transaction.oncomplete = () => {
@@ -77,6 +86,7 @@ export class IndexedDbService {
             transaction.objectStore('comments').clear();
             transaction.objectStore('attachments').clear();
             transaction.objectStore('internalLinks').clear();
+            transaction.objectStore('externalLinks').clear();
             transaction.objectStore('postMeta').clear();
             transaction.objectStore('siteInfo').clear();
         });
@@ -125,6 +135,103 @@ export class IndexedDbService {
             request.onerror = (event) => {
                 reject((event.target as IDBRequest).error);
             };
+        });
+    }
+
+    async getStoreCount(storeName: string): Promise<number> {
+        if (!this.db) {
+            await this.openDatabase();
+        }
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error("Database not open."));
+                return;
+            }
+            const transaction = this.db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.count();
+
+            request.onsuccess = (event) => resolve((event.target as IDBRequest).result);
+            request.onerror = (event) => reject((event.target as IDBRequest).error);
+        });
+    }
+
+    async getStorePage<T>(storeName: string, page: number, pageSize: number): Promise<T[]> {
+        if (!this.db) {
+            await this.openDatabase();
+        }
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error("Database not open."));
+                return;
+            }
+
+            const transaction = this.db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.openCursor();
+            const results: T[] = [];
+            const start = (page - 1) * pageSize;
+            let index = 0;
+
+            request.onsuccess = (event) => {
+                const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+                if (!cursor) {
+                    resolve(results);
+                    return;
+                }
+                if (index >= start && results.length < pageSize) {
+                    results.push(cursor.value as T);
+                }
+                index += 1;
+                if (results.length >= pageSize) {
+                    resolve(results);
+                    return;
+                }
+                cursor.continue();
+            };
+
+            request.onerror = (event) => reject((event.target as IDBRequest).error);
+        });
+    }
+
+    async searchPostMeta(query: string, limit = 500): Promise<PostMeta[]> {
+        if (!this.db) {
+            await this.openDatabase();
+        }
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error("Database not open."));
+                return;
+            }
+
+            const transaction = this.db.transaction('postMeta', 'readonly');
+            const store = transaction.objectStore('postMeta');
+            const request = store.openCursor();
+            const results: PostMeta[] = [];
+            const needle = query.toLowerCase();
+
+            request.onsuccess = (event) => {
+                const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+                if (!cursor) {
+                    resolve(results);
+                    return;
+                }
+                const meta = cursor.value as PostMeta;
+                if (
+                    meta.MetaKey.toLowerCase().includes(needle) ||
+                    meta.MetaValue.toLowerCase().includes(needle) ||
+                    meta.PostId.toString().includes(needle)
+                ) {
+                    results.push(meta);
+                    if (results.length >= limit) {
+                        resolve(results);
+                        return;
+                    }
+                }
+                cursor.continue();
+            };
+
+            request.onerror = (event) => reject((event.target as IDBRequest).error);
         });
     }
 
@@ -217,6 +324,10 @@ export class IndexedDbService {
 
     async getInternalLinks(): Promise<InternalLink[]> {
         return this.getAllData<InternalLink>('internalLinks');
+    }
+
+    async getExternalLinks(): Promise<ExternalLink[]> {
+        return this.getAllData<ExternalLink>('externalLinks');
     }
 
     async getPostMeta(): Promise<PostMeta[]> {

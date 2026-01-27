@@ -9,6 +9,9 @@ const PostMetaView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(200);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     const fetchPostMeta = async () => {
@@ -17,7 +20,9 @@ const PostMetaView: React.FC = () => {
       try {
         const dbService = new IndexedDbService();
         await dbService.openDatabase();
-        const fetchedPostMeta = await dbService.getPostMeta();
+        const total = await dbService.getStoreCount('postMeta');
+        setTotalCount(total);
+        const fetchedPostMeta = await dbService.getStorePage<PostMeta>('postMeta', page, pageSize);
         setAllPostMeta(fetchedPostMeta);
       } catch (err) {
         console.error("Error fetching post meta:", err);
@@ -28,19 +33,34 @@ const PostMetaView: React.FC = () => {
     };
 
     fetchPostMeta();
-  }, []);
+  }, [page, pageSize]);
 
   const filteredPostMeta = useMemo(() => {
+    return allPostMeta;
+  }, [allPostMeta]);
+
+  const handleSearch = async () => {
     if (!searchTerm) {
-      return allPostMeta;
+      setPage(1);
+      return;
     }
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    return allPostMeta.filter(meta =>
-      meta.MetaKey.toLowerCase().includes(lowerCaseSearchTerm) ||
-      meta.MetaValue.toLowerCase().includes(lowerCaseSearchTerm) ||
-      meta.PostId.toString().includes(lowerCaseSearchTerm)
-    );
-  }, [allPostMeta, searchTerm]);
+    setLoading(true);
+    setError(null);
+    try {
+      const dbService = new IndexedDbService();
+      await dbService.openDatabase();
+      const results = await dbService.searchPostMeta(searchTerm, 500);
+      setAllPostMeta(results);
+      setTotalCount(results.length);
+    } catch (err) {
+      console.error("Error searching post meta:", err);
+      setError("Failed to search post meta.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   if (loading) {
     return <p>Loading post meta...</p>;
@@ -52,7 +72,7 @@ const PostMetaView: React.FC = () => {
 
   return (
     <div className="post-meta-view-container">
-      <h2>Post Meta ({filteredPostMeta.length} / {allPostMeta.length})</h2>
+      <h2>Post Meta ({totalCount})</h2>
       <input
         type="text"
         placeholder="Search post meta..."
@@ -60,6 +80,9 @@ const PostMetaView: React.FC = () => {
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
       />
+      <button className="btn-secondary" onClick={handleSearch}>
+        Search
+      </button>
       {filteredPostMeta.length === 0 && !loading && !error ? (
         <p>No post meta found matching your search criteria.</p>
       ) : (
@@ -83,6 +106,26 @@ const PostMetaView: React.FC = () => {
             ))}
           </tbody>
         </table>
+      )}
+      {!searchTerm && (
+        <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+            Prev
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+            Next
+          </button>
+          <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+            {[100, 200, 500].map((size) => (
+              <option key={size} value={size}>
+                {size} / page
+              </option>
+            ))}
+          </select>
+        </div>
       )}
     </div>
   );

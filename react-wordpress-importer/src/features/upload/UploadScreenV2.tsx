@@ -8,6 +8,7 @@ import { IndexedDbService } from '../../data/services/IndexedDbService';
 import type { MappedData } from '../../data/services/DataMapper';
 import { XmlParser } from '../../data/services/XmlParser';
 import { DataMapper } from '../../data/services/DataMapper';
+import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
 
 const steps = [
   { id: 'upload', label: 'Upload XML' },
@@ -156,6 +157,13 @@ const UploadScreenV2 = () => {
       await dbService.addData('attachments', mappedData.attachments);
       await dbService.addData('comments', mappedData.comments);
       await dbService.addData('postMeta', mappedData.postMeta);
+
+      setProgress(80);
+      logDebug('Building internal/external links.');
+      const siteUrl = mappedData.siteInfo.find((info) => info.Key === 'link')?.Value || '';
+      const linkData = buildInternalAndExternalLinks(mappedData.posts, siteUrl);
+      await dbService.addData('internalLinks', linkData.internalLinks);
+      await dbService.addData('externalLinks', linkData.externalLinks);
 
       setImportStats((prev) => ({
         ...prev,

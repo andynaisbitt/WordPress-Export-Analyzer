@@ -16,6 +16,7 @@ import MediaManifestScreenV2 from '../features/mediaManifest/MediaManifestScreen
 import CleanupToolsScreenV2 from '../features/cleanup/CleanupToolsScreenV2';
 import ExportWizardScreenV2 from '../features/export/ExportWizardScreenV2';
 import ContentQaScreenV2 from '../features/analysis/ContentQaScreenV2';
+import ExternalLinksScreenV2 from '../features/externallinks/ExternalLinksScreenV2';
 
 const router = createBrowserRouter([
   {
@@ -69,6 +70,10 @@ const router = createBrowserRouter([
       {
         path: 'internal-links',
         element: <InternalLinksScreenV2 />,
+      },
+      {
+        path: 'external-links',
+        element: <ExternalLinksScreenV2 />,
       },
       {
         path: 'media-manifest',
