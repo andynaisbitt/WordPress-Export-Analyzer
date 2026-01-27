@@ -3,24 +3,36 @@ import ForceGraph2D from 'react-force-graph-2d';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { buildGraphData, GraphData } from '../../analysis/graph/GraphDataService';
 import { buildGraphInsights, buildLinkMapCsv } from '../../analysis/graph/graphInsightsV2';
+import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
+import { SiteInfo } from '../../core/domain/types/SiteInfo';
+import { useNavigate } from 'react-router-dom';
 import { Post } from '../../core/domain/types/Post';
 import { InternalLink } from '../../core/domain/types/InternalLink';
 
 const KnowledgeGraphScreenV2 = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [links, setLinks] = useState<InternalLink[]>([]);
+  const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [graphWidth, setGraphWidth] = useState(900);
   const [filter, setFilter] = useState<'all' | 'orphans' | 'hubs'>('all');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [rebuildBusy, setRebuildBusy] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       const db = new IndexedDbService();
       await db.openDatabase();
-      const [loadedPosts, internalLinks] = await Promise.all([db.getPosts(), db.getInternalLinks()]);
+      const [loadedPosts, internalLinks, loadedSiteInfo] = await Promise.all([
+        db.getPosts(),
+        db.getInternalLinks(),
+        db.getSiteInfo(),
+      ]);
       setPosts(loadedPosts);
       setLinks(internalLinks);
+      setSiteInfo(loadedSiteInfo);
       setLoading(false);
     };
     void load();
@@ -53,6 +65,11 @@ const KnowledgeGraphScreenV2 = () => {
     }
     return graphData;
   }, [filter, graphData, insights]);
+
+  const selectedNode = useMemo(() => {
+    if (!selectedId) return null;
+    return graphData.nodes.find((node) => node.id === selectedId) ?? null;
+  }, [graphData.nodes, selectedId]);
 
   const topCategory = useMemo(() => {
     const counts = new Map<string, number>();
@@ -88,6 +105,36 @@ const KnowledgeGraphScreenV2 = () => {
     URL.revokeObjectURL(url);
   };
 
+  const siteUrlValue = siteInfo.find((info) => info.Key === 'link')?.Value || '';
+
+  const updateSiteUrl = async (value: string) => {
+    const db = new IndexedDbService();
+    await db.openDatabase();
+    const existing = siteInfo.find((info) => info.Key === 'link');
+    const entry = { Key: 'link', Value: value };
+    if (existing) {
+      await db.updateData('siteInfo', entry);
+      setSiteInfo((prev) => prev.map((info) => (info.Key === 'link' ? entry : info)));
+    } else {
+      await db.addData('siteInfo', [entry]);
+      setSiteInfo((prev) => [...prev, entry]);
+    }
+  };
+
+  const rebuildLinks = async () => {
+    setRebuildBusy(true);
+    const db = new IndexedDbService();
+    await db.openDatabase();
+    const currentSiteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
+    const linkData = buildInternalAndExternalLinks(posts, currentSiteUrl);
+    await db.clearStore('internalLinks');
+    await db.clearStore('externalLinks');
+    await db.addData('internalLinks', linkData.internalLinks);
+    await db.addData('externalLinks', linkData.externalLinks);
+    setLinks(linkData.internalLinks);
+    setRebuildBusy(false);
+  };
+
   if (loading) {
     return <div>Building knowledge graph...</div>;
   }
@@ -108,6 +155,27 @@ const KnowledgeGraphScreenV2 = () => {
           </button>
         </div>
       </div>
+
+      <div className="graph-tools">
+        <label>
+          Site URL (used to detect internal links)
+          <input
+            type="text"
+            placeholder="https://yoursite.com"
+            value={siteUrlValue}
+            onChange={(event) => updateSiteUrl(event.target.value)}
+          />
+        </label>
+        <button className="btn-secondary" onClick={rebuildLinks} disabled={rebuildBusy}>
+          {rebuildBusy ? 'Rebuilding...' : 'Rebuild Links'}
+        </button>
+      </div>
+
+      {links.length === 0 && (
+        <div className="graph-warning">
+          No internal links detected yet. Rebuild links or check the Site URL above.
+        </div>
+      )}
 
       <div className="graph-summary">
         <span>Nodes: {insights.nodes}</span>
@@ -153,10 +221,29 @@ const KnowledgeGraphScreenV2 = () => {
             nodeAutoColorBy="group"
             nodeLabel={(node: any) => `${node.name} (${node.group})`}
             linkColor={() => 'rgba(15, 27, 32, 0.2)'}
-            nodeRelSize={4}
+            nodeRelSize={5}
+            nodeVal={(node: any) => Math.max(2, node.inbound + node.outbound + 1)}
+            onNodeClick={(node: any) => setSelectedId(node.id)}
           />
         </div>
       </div>
+
+      {selectedNode && (
+        <div className="graph-selection">
+          <div>
+            <h3>{selectedNode.name || 'Untitled'}</h3>
+            <p>/{selectedNode.slug || 'no-slug'}</p>
+            <div className="graph-selection-meta">
+              <span>Inbound: {selectedNode.inbound}</span>
+              <span>Outbound: {selectedNode.outbound}</span>
+              <span>Words: {selectedNode.wordCount}</span>
+            </div>
+          </div>
+          <button className="btn-primary" onClick={() => navigate(`/posts/${selectedNode.id}`)}>
+            Open Post
+          </button>
+        </div>
+      )}
 
       <div className="graph-insights">
         <div className="graph-panel">
@@ -164,7 +251,9 @@ const KnowledgeGraphScreenV2 = () => {
           <ul>
             {insights.topInbound.map((item) => (
               <li key={item.postId}>
-                {item.title} ({item.inbound})
+                <button className="graph-link" onClick={() => setSelectedId(item.postId)}>
+                  {item.title} ({item.inbound})
+                </button>
               </li>
             ))}
           </ul>
@@ -174,7 +263,9 @@ const KnowledgeGraphScreenV2 = () => {
           <ul>
             {insights.topOutbound.map((item) => (
               <li key={item.postId}>
-                {item.title} ({item.outbound})
+                <button className="graph-link" onClick={() => setSelectedId(item.postId)}>
+                  {item.title} ({item.outbound})
+                </button>
               </li>
             ))}
           </ul>
@@ -183,7 +274,11 @@ const KnowledgeGraphScreenV2 = () => {
           <h3>Orphan Posts</h3>
           <ul>
             {insights.orphanPosts.slice(0, 10).map((item) => (
-              <li key={item.postId}>{item.title}</li>
+              <li key={item.postId}>
+                <button className="graph-link" onClick={() => setSelectedId(item.postId)}>
+                  {item.title}
+                </button>
+              </li>
             ))}
           </ul>
         </div>

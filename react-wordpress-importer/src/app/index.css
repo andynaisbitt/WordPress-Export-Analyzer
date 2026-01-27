@@ -1081,6 +1081,28 @@ input[type="text"] {
   flex-wrap: wrap;
 }
 
+.graph-tools {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.graph-tools label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.graph-warning {
+  border: 1px solid rgba(201, 122, 75, 0.4);
+  background: rgba(201, 122, 75, 0.12);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  color: #875034;
+}
+
 .graph-preview {
   display: grid;
   gap: 12px;
@@ -1150,6 +1172,38 @@ input[type="text"] {
   padding-left: 18px;
   color: var(--ink-muted);
   font-size: 0.85rem;
+}
+
+.graph-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.graph-link:hover {
+  color: var(--accent-2);
+}
+
+.graph-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.graph-selection-meta {
+  display: flex;
+  gap: 12px;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 1024px) {

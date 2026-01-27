@@ -7,6 +7,9 @@ export interface GraphNode {
   slug: string;
   value: number;
   group: string;
+  inbound: number;
+  outbound: number;
+  wordCount: number;
 }
 
 export interface GraphLink {
@@ -31,13 +34,32 @@ export const buildGraphData = (posts: Post[], internalLinks: InternalLink[]): Gr
     postMap.set(post.PostId, post);
   });
 
-  const nodes: GraphNode[] = posts.map((post) => ({
-    id: post.PostId,
-    name: post.Title,
-    slug: post.PostName,
-    value: Math.max(1, Math.ceil(countWords(post.ContentEncoded || post.CleanedHtmlSource || '') / 200)),
-    group: (post.CategorySlugs && post.CategorySlugs[0]) || 'uncategorized',
-  }));
+  const linkCounts = new Map<number, { inbound: number; outbound: number }>();
+  posts.forEach((post) => {
+    linkCounts.set(post.PostId, { inbound: 0, outbound: 0 });
+  });
+
+  internalLinks.forEach((link) => {
+    const source = linkCounts.get(link.SourcePostId);
+    const target = linkCounts.get(link.TargetPostId);
+    if (source) source.outbound += 1;
+    if (target) target.inbound += 1;
+  });
+
+  const nodes: GraphNode[] = posts.map((post) => {
+    const wordCount = countWords(post.ContentEncoded || post.CleanedHtmlSource || '');
+    const counts = linkCounts.get(post.PostId) ?? { inbound: 0, outbound: 0 };
+    return {
+      id: post.PostId,
+      name: post.Title,
+      slug: post.PostName,
+      value: Math.max(1, counts.inbound + counts.outbound),
+      group: (post.CategorySlugs && post.CategorySlugs[0]) || 'uncategorized',
+      inbound: counts.inbound,
+      outbound: counts.outbound,
+      wordCount,
+    };
+  });
 
   const links: GraphLink[] = internalLinks
     .filter((link) => link.SourcePostId && link.TargetPostId)

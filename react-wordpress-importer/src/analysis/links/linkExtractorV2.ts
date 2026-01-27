@@ -40,14 +40,31 @@ const isInternalUrl = (url: string, siteUrl: string) => {
 const findTargetPost = (url: string, posts: Post[]) => {
   const cleanUrl = normalizeUrl(url);
   if (!cleanUrl) return undefined;
-  const slug = cleanUrl
-    .replace(/^https?:\/\/[^/]+/i, '')
-    .replace(/\/$/, '')
-    .split('/')
-    .filter(Boolean)
-    .pop();
-  if (!slug) return undefined;
-  return posts.find((post) => post.PostName === slug);
+  const path = cleanUrl.replace(/^https?:\/\/[^/]+/i, '').replace(/\/$/, '');
+  const segments = path.split('?')[0].split('/').filter(Boolean);
+  const slugCandidates = new Set(segments);
+  if (segments.length > 0) {
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment) slugCandidates.add(lastSegment);
+  }
+  const bySlug = posts.find((post) => post.PostName && slugCandidates.has(post.PostName));
+  if (bySlug) return bySlug;
+
+  try {
+    const parsed = new URL(cleanUrl, 'http://placeholder.local');
+    const params = parsed.searchParams;
+    const idParam = params.get('p') || params.get('page_id') || params.get('post') || params.get('post_id');
+    if (idParam) {
+      const id = Number(idParam);
+      if (!Number.isNaN(id)) {
+        return posts.find((post) => post.PostId === id);
+      }
+    }
+  } catch {
+    // ignore url parse
+  }
+
+  return undefined;
 };
 
 export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) => {
