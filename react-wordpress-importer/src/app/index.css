@@ -1386,7 +1386,8 @@ input[type="text"] {
 [data-theme="dark"] .comments-view-container,
 [data-theme="dark"] .attachments-view-container,
 [data-theme="dark"] .post-meta-view-container {
-  background: #1a2023;
+  background: #151a1d;
+  border-color: #2b3439;
 }
 
 [data-theme="dark"] .stat-card,
@@ -1395,7 +1396,8 @@ input[type="text"] {
 [data-theme="dark"] .seo-preview-card,
 [data-theme="dark"] .graph-frame,
 [data-theme="dark"] .graph-selection {
-  background: #1b2226;
+  background: #1a2124;
+  border-color: #2f3a40;
 }
 
 [data-theme="dark"] .nav-pill {
@@ -1405,6 +1407,69 @@ input[type="text"] {
 [data-theme="dark"] .btn-secondary {
   background: #1f262a;
   color: var(--ink);
+}
+
+[data-theme="dark"] table {
+  color: var(--ink);
+}
+
+[data-theme="dark"] th {
+  background: #1d2326;
+  color: var(--ink-muted);
+  border-bottom-color: #2f3a40;
+}
+
+[data-theme="dark"] td {
+  border-bottom-color: #2f3a40;
+}
+
+[data-theme="dark"] .upload-hero,
+[data-theme="dark"] .debug-card,
+[data-theme="dark"] .export-card,
+[data-theme="dark"] .taxonomy-card,
+[data-theme="dark"] .seo-list,
+[data-theme="dark"] .remediation-list,
+[data-theme="dark"] .remediation-panel,
+[data-theme="dark"] .graph-panel,
+[data-theme="dark"] .seo-preview,
+[data-theme="dark"] .seo-issues {
+  background: #1a2124;
+  border-color: #2f3a40;
+}
+
+[data-theme="dark"] .post-detail-card,
+[data-theme="dark"] .post-html-preview,
+[data-theme="dark"] .post-detail-editor textarea,
+[data-theme="dark"] .block-card {
+  background: #161c1f;
+  border-color: #2f3a40;
+  color: var(--ink);
+}
+
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: #1b2226;
+  border-color: #2f3a40;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .qa-pill.qa-clean,
+[data-theme="dark"] .qa-pill.qa-low {
+  background: rgba(121, 209, 200, 0.18);
+  color: #79d1c8;
+}
+
+[data-theme="dark"] .qa-pill.qa-medium {
+  background: rgba(241, 178, 122, 0.2);
+  color: #f1b27a;
+}
+
+[data-theme="dark"] .qa-pill.qa-high {
+  background: rgba(201, 58, 58, 0.2);
+  color: #e28a8a;
 }
 
 .graph-insights {
