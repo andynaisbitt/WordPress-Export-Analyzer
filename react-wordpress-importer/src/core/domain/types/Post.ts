@@ -9,6 +9,9 @@ export interface Post {
     PostName: string;
     CleanedHtmlSource: string;
     ContentEncoded: string;
+    Excerpt?: string;
+    CategorySlugs?: string[];
+    TagSlugs?: string[];
     Creator: string;
     Status: string;
     // Add other properties as needed from the C# Post model

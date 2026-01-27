@@ -5,6 +5,7 @@
 - Posts/Pages/Tags/Categories/Authors/Comments/Attachments/Post Meta views are wired.
 - Post editor added (local-only edits).
 - Media Manifest view is working.
+- BlogCMS export pack + API import screen added.
 
 Known gaps / issues:
 - Internal Links view can lag on large datasets (now capped by default; Load all optional).

@@ -1,4 +1,4 @@
-# 🚀 WordPress Export Analyzer & Importer (React Edition)
+# WordPress Export Analyzer & Importer (React Edition)
 
 ### *A modern, in-browser toolkit for analyzing, auditing, and converting WordPress XML exports.*
 
@@ -8,9 +8,21 @@
 
 ---
 
+## Status update (Jan 27, 2026)
+- Upload + parse + IndexedDB save is working (worker with main-thread fallback).
+- Posts, Pages, Categories, Tags, Authors, Comments, Attachments, Post Meta views are wired.
+- Post editor added (local-only edits in IndexedDB).
+- Media Manifest view is working.
+- BlogCMS export pack + API import screen added.
+
+Known gaps / issues:
+- Internal Links view can lag on large datasets (now capped by default; Load all optional).
+- Cleanup tools implemented (clear DB, remove empty posts/pages).
+- BlogCMS export format not implemented yet (needs target schema).
+
 ## ✨ Overview
 
-**WordPress Export Analyzer** is being modernized into a powerful, client-side toolkit for deeply inspecting, auditing, and transforming **WordPress XML export (`.xml`) files**. This new version is a **Single Page Application (SPA)** built with **React and TypeScript**, running entirely in your browser.
+**WordPress Export Analyzer** has been modernized into a powerful, client-side toolkit for deeply inspecting, auditing, and transforming **WordPress XML export (`.xml`) files**. This new version is a **Single Page Application (SPA)** built with **React and TypeScript**, running entirely in your browser.
 
 There's **no backend, no server, and no cost**. Your data remains private and is processed on your machine.
 
@@ -35,24 +47,25 @@ This tool is perfect for:
 
 ### 📊 **Analysis & Auditing**
 - **Interactive Dashboard**: Get a quick overview of your site's statistics.
-- **Data Views**: Browse and search through your posts, pages, tags, and categories.
+- **Data Views**: Browse and search through your posts, pages, tags, categories, authors, comments, attachments, post meta, and internal links.
+- **Search and Filtering**: All data views include search functionality.
 - **SEO & Link Analysis**: (Planned) Tools for analyzing internal/external links, SEO metadata, and more.
 
 ### 📦 **Flexible Exporting**
-- **Export to Markdown**: Easily convert your posts and pages to Markdown.
-- **JSON Export**: (Planned) Export structured data for use in other applications.
+- **Export to Markdown**: Easily convert your posts to Markdown.
+- **Export to JSON**: Export all parsed data to a single JSON file.
 - **CMS Import Bundles**: (Planned) Generate import files for other CMSs, including **FastReactCMS**.
 
 ---
 
-## 📁 Proposed Project Structure
+## 📁 Project Structure
 
 ```
 /
 |-- /src/
 |   |-- /components/      # Reusable React components (e.g., DataGrid, Button)
 |   |-- /views/           # Main application views/pages (e.g., Dashboard, Posts, Tags)
-|   |-- /services/        # Application services (e.g., XmlParser.ts, IndexedDBService.ts)
+|   |-- /services/        # Application services (e.g., XmlParser.ts, IndexedDBService.ts, DataMapper.ts)
 |   |-- /hooks/           # Custom React hooks
 |   |-- /store/           # State management store (e.g., Zustand or Redux)
 |   |-- /types/           # TypeScript type definitions (e.g., Post, Tag, Category)
@@ -79,12 +92,13 @@ This tool is perfect for:
 
 ## 🔧 Tech Stack
 
-### Modern Stack (In Development)
+### Modern Stack
 - **React**
 - **TypeScript**
 - **IndexedDB** (for client-side storage)
-- **Zustand** or **Redux Toolkit** (for state management)
 - **fast-xml-parser** (for XML parsing)
+- **turndown** (for HTML to Markdown conversion)
+- **Zustand** or **Redux Toolkit** (for state management - planned)
 
 ### Legacy Components (Archived)
 - C# / .NET Framework (WinForms)
@@ -96,19 +110,25 @@ This tool is perfect for:
 
 ## 🛠️ Roadmap
 
-### Current Focus
+### Completed
 - [x] **Project State Analysis & Modernization Proposal**
-- [ ] **Implement New Project Structure**
-- [ ] **Set up React/TypeScript Boilerplate**
-- [ ] **Develop Core XML Parsing Service**
-- [ ] **Implement IndexedDB Data Service**
+- [x] **Implement New Project Structure**
+- [x] **Set up React/TypeScript Boilerplate**
+- [x] **Develop Core XML Parsing Service**
+- [x] **Implement IndexedDB Data Service**
+- [x] **Build UI Components for all Data Views**
+- [x] **Implement Dashboard with Site Statistics**
+- [x] **Add Full Markdown Exporter for Posts**
+- [x] **Add JSON Exporter for All Data**
+- [x] **Implement Search/Filtering in All Data Views**
 
 ### Future Features
-- [ ] **Build UI Components for all Data Views** (Posts, Pages, Tags, etc.)
-- [ ] **Implement Dashboard with Site Statistics**
-- [ ] **Add Full Markdown Exporter**
 - [ ] **Create One-click FastReactCMS Import Bundle**
 - [ ] **Develop Internal/External Link Analysis Tools**
+- [ ] **Add Pagination and Sorting to Data Views**
+- [ ] **Media Downloader & Image Validation**
+- [ ] **Duplicate Content Detection**
+- [ ] **Internal Link Graph Visualization (Graphviz/D3)**
 
 ---
 

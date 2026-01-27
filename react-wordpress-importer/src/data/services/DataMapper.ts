@@ -83,14 +83,18 @@ export class DataMapper {
 
       if (postType === 'post' || postType === 'page') {
         const itemCategories = toArray(item?.category);
+        const categorySlugs: string[] = [];
+        const tagSlugs: string[] = [];
         itemCategories.forEach((cat: any) => {
           const domain = getText(cat?.['@_domain']);
           const nicename = getText(cat?.['@_nicename']) || getText(cat);
           if (!nicename) return;
           if (domain === 'category') {
             categoryCounts.set(nicename, (categoryCounts.get(nicename) || 0) + 1);
+            categorySlugs.push(nicename);
           } else if (domain === 'post_tag') {
             tagCounts.set(nicename, (tagCounts.get(nicename) || 0) + 1);
+            tagSlugs.push(nicename);
           }
         });
 
@@ -103,6 +107,9 @@ export class DataMapper {
           PostName: getText(item?.['wp:post_name']),
           CleanedHtmlSource: getText(item?.['content:encoded']),
           ContentEncoded: getText(item?.['content:encoded']),
+          Excerpt: getText(item?.['excerpt:encoded']) || getText(item?.description),
+          CategorySlugs: categorySlugs,
+          TagSlugs: tagSlugs,
           Creator: getText(item?.['dc:creator']),
           Status: getText(item?.['wp:status']),
         });

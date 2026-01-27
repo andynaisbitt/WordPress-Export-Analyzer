@@ -588,3 +588,64 @@ input[type="text"] {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+.export-wizard {
+  display: grid;
+  gap: 16px;
+}
+
+.export-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.export-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 12px;
+}
+
+.export-card label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.export-card input[type="text"],
+.export-card input[type="number"],
+.export-card input[type="password"] {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.export-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.export-note {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.export-log {
+  display: grid;
+  gap: 10px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
