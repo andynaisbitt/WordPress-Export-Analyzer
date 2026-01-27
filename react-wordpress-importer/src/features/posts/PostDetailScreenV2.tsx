@@ -49,14 +49,14 @@ const PostDetailScreenV2 = () => {
     showToast('Post saved locally.', 'success');
   };
 
-  if (loading) {
-    return <div>Loading post...</div>;
-  }
-
   const markdown = useMemo(() => {
     const html = draft?.ContentEncoded || draft?.CleanedHtmlSource || '';
     return htmlToMarkdown(html);
   }, [draft?.ContentEncoded, draft?.CleanedHtmlSource]);
+
+  if (loading) {
+    return <div>Loading post...</div>;
+  }
 
   if (!post || !draft) {
     return (
