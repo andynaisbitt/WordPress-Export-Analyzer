@@ -183,7 +183,7 @@ const RemediationDashboard = () => {
       </div>
 
       <List
-        height={Math.min(600, issues.length * ROW_HEIGHT + 16)}
+        height={Math.min(640, issues.length * ROW_HEIGHT + 16)}
         width="100%"
         rowCount={issues.length}
         rowHeight={getItemSize}

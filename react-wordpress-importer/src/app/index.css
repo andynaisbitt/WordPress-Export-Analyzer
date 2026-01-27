@@ -1497,6 +1497,25 @@ body[data-theme="dark"] .seo-issues {
   border-color: #2f3a40;
 }
 
+body[data-theme="dark"] .remediation-row-inner {
+  background: #1a2124;
+  border-color: #2f3a40;
+  color: var(--ink);
+}
+
+body[data-theme="dark"] .remediation-tags span {
+  background: rgba(121, 209, 200, 0.15);
+  color: #79d1c8;
+}
+
+body[data-theme="dark"] .remediation-list {
+  background: #151a1d;
+}
+
+body[data-theme="dark"] .remediation-panel {
+  background: #151a1d;
+}
+
 body[data-theme="dark"] .post-detail-card,
 body[data-theme="dark"] .post-html-preview,
 body[data-theme="dark"] .post-detail-editor textarea,
