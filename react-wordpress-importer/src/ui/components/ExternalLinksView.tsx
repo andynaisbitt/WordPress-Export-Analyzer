@@ -12,6 +12,16 @@ const ExternalLinksView: React.FC = () => {
   const [showAll, setShowAll] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
+  const [rebuildStats, setRebuildStats] = useState<{
+    postsScanned: number;
+    postsWithContent: number;
+    htmlLinks: number;
+    markdownLinks: number;
+    totalLinks: number;
+    unresolvedInternal: number;
+    samples: string[];
+    siteUrl: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -60,6 +70,9 @@ const ExternalLinksView: React.FC = () => {
       const siteInfo = await dbService.getSiteInfo();
       const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
       const linkData = buildInternalAndExternalLinks(posts, siteUrl);
+      if ('stats' in linkData) {
+        setRebuildStats(linkData.stats);
+      }
       await dbService.clearStore('internalLinks');
       await dbService.clearStore('externalLinks');
       await dbService.addData('internalLinks', linkData.internalLinks);
@@ -148,6 +161,23 @@ const ExternalLinksView: React.FC = () => {
           Export CSV
         </button>
       </div>
+      {rebuildStats && (
+        <div className="debug-card" style={{ marginBottom: '12px' }}>
+          <h4>Rebuild Diagnostics</h4>
+          <div className="debug-metrics">
+            <span>Posts scanned: {rebuildStats.postsScanned}</span>
+            <span>With content: {rebuildStats.postsWithContent}</span>
+            <span>HTML links: {rebuildStats.htmlLinks}</span>
+            <span>Markdown links: {rebuildStats.markdownLinks}</span>
+            <span>Total links: {rebuildStats.totalLinks}</span>
+          </div>
+          {rebuildStats.samples.length > 0 && (
+            <div style={{ marginTop: '8px', fontSize: '0.85rem', color: '#6a7a83' }}>
+              Samples: {rebuildStats.samples.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
       {filtered.length > 300 && (
         <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
           Showing {displayLinks.length} of {filtered.length}. Rendering too many rows can be slow.

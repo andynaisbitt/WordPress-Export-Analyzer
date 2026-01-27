@@ -2,19 +2,34 @@ import { ExternalLink } from '../../core/domain/types/ExternalLink';
 import { InternalLink } from '../../core/domain/types/InternalLink';
 import { Post } from '../../core/domain/types/Post';
 
+const decodeHtml = (value: string) => {
+  if (typeof document === 'undefined') {
+    return value
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+  }
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = value;
+  return textarea.value;
+};
+
 const extractLinksFromHtml = (html: string) => {
+  const normalized = html.includes('&lt;') ? decodeHtml(html) : html;
   if (typeof DOMParser === 'undefined') {
     const links: { href: string; text: string }[] = [];
     const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
     let match;
-    while ((match = linkRegex.exec(html)) !== null) {
+    while ((match = linkRegex.exec(normalized)) !== null) {
       links.push({ href: match[1], text: match[2].replace(/<[^>]+>/g, '').trim() });
     }
     return links;
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = parser.parseFromString(normalized, 'text/html');
   return Array.from(doc.querySelectorAll('a')).map((anchor) => ({
     href: anchor.getAttribute('href') || '',
     text: anchor.textContent?.trim() || '',
@@ -80,18 +95,35 @@ const findTargetPost = (url: string, posts: Post[]) => {
 export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) => {
   const internalLinks: InternalLink[] = [];
   const externalLinks: ExternalLink[] = [];
+  const stats = {
+    postsScanned: 0,
+    postsWithContent: 0,
+    htmlLinks: 0,
+    markdownLinks: 0,
+    totalLinks: 0,
+    unresolvedInternal: 0,
+    samples: [] as string[],
+    siteUrl,
+  };
 
   posts.forEach((post) => {
+    stats.postsScanned += 1;
     const content = post.ContentEncoded || post.CleanedHtmlSource || post.Markdown || '';
     if (!content) return;
+    stats.postsWithContent += 1;
     const links = extractLinksFromHtml(content);
-    const markdownLinks = links.length === 0 && post.Markdown ? extractLinksFromMarkdown(post.Markdown) : [];
-    const allLinks = links.length > 0 ? links : markdownLinks;
+    const markdownLinks = post.Markdown ? extractLinksFromMarkdown(post.Markdown) : [];
+    const allLinks = [...links, ...markdownLinks];
+    if (links.length > 0) stats.htmlLinks += links.length;
+    if (markdownLinks.length > 0) stats.markdownLinks += markdownLinks.length;
+
     allLinks.forEach((link) => {
       const href = normalizeUrl(link.href);
       if (!href) return;
+      if (stats.samples.length < 5) stats.samples.push(href);
       if (isInternalUrl(href, siteUrl)) {
         const target = findTargetPost(href, posts);
+        if (!target) stats.unresolvedInternal += 1;
         internalLinks.push({
           Id: 0,
           SourcePostId: post.PostId,
@@ -114,5 +146,7 @@ export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) =>
     });
   });
 
-  return { internalLinks, externalLinks };
+  stats.totalLinks = internalLinks.length + externalLinks.length;
+
+  return { internalLinks, externalLinks, stats };
 };
