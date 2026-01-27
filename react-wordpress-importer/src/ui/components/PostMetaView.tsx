@@ -3,15 +3,19 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { PostMeta } from '../../core/domain/types/PostMeta';
+import { Post } from '../../core/domain/types/Post';
+import { normalizeSeoForPosts } from '../../analysis/seo/seoNormalizerV2';
 
 const PostMetaView: React.FC = () => {
   const [allPostMeta, setAllPostMeta] = useState<PostMeta[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(200);
   const [totalCount, setTotalCount] = useState(0);
+  const [viewMode, setViewMode] = useState<'raw' | 'normalized'>('normalized');
 
   useEffect(() => {
     const fetchPostMeta = async () => {
@@ -24,6 +28,8 @@ const PostMetaView: React.FC = () => {
         setTotalCount(total);
         const fetchedPostMeta = await dbService.getStorePage<PostMeta>('postMeta', page, pageSize);
         setAllPostMeta(fetchedPostMeta);
+        const loadedPosts = await dbService.getPosts();
+        setPosts(loadedPosts);
       } catch (err) {
         console.error("Error fetching post meta:", err);
         setError("Failed to load post meta.");
@@ -38,6 +44,8 @@ const PostMetaView: React.FC = () => {
   const filteredPostMeta = useMemo(() => {
     return allPostMeta;
   }, [allPostMeta]);
+
+  const normalized = useMemo(() => normalizeSeoForPosts(posts, allPostMeta), [posts, allPostMeta]);
 
   const handleSearch = async () => {
     if (!searchTerm) {
@@ -73,6 +81,14 @@ const PostMetaView: React.FC = () => {
   return (
     <div className="post-meta-view-container">
       <h2>Post Meta ({totalCount})</h2>
+      <div className="post-meta-actions">
+        <button className={`btn-secondary${viewMode === 'normalized' ? ' qa-active' : ''}`} onClick={() => setViewMode('normalized')}>
+          Normalized SEO
+        </button>
+        <button className={`btn-secondary${viewMode === 'raw' ? ' qa-active' : ''}`} onClick={() => setViewMode('raw')}>
+          Raw Meta
+        </button>
+      </div>
       <input
         type="text"
         placeholder="Search post meta..."
@@ -83,7 +99,40 @@ const PostMetaView: React.FC = () => {
       <button className="btn-secondary" onClick={handleSearch}>
         Search
       </button>
-      {filteredPostMeta.length === 0 && !loading && !error ? (
+      {viewMode === 'normalized' ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Post ID</th>
+              <th>Title</th>
+              <th>SEO Title</th>
+              <th>Description</th>
+              <th>Canonical</th>
+              <th>Focus Keywords</th>
+              <th>OpenGraph Image</th>
+              <th>Twitter Title</th>
+              <th>NoIndex</th>
+              <th>Schema</th>
+            </tr>
+          </thead>
+          <tbody>
+            {normalized.entries.map((entry) => (
+              <tr key={entry.postId}>
+                <td>{entry.postId}</td>
+                <td>{entry.title}</td>
+                <td>{entry.seo.title.slice(0, 80)}</td>
+                <td>{entry.seo.description.slice(0, 80)}</td>
+                <td>{entry.seo.canonical || '-'}</td>
+                <td>{entry.seo.focusKeywords.join(', ') || '-'}</td>
+                <td>{entry.seo.openGraph.image || '-'}</td>
+                <td>{entry.seo.twitter.title || '-'}</td>
+                <td>{entry.seo.robots.index ? 'No' : 'Yes'}</td>
+                <td>{entry.seo.schemaCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : filteredPostMeta.length === 0 && !loading && !error ? (
         <p>No post meta found matching your search criteria.</p>
       ) : (
         <table>

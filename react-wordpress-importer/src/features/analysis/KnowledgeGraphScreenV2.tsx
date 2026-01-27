@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { buildGraphData, GraphData } from '../../analysis/graph/GraphDataService';
+import { buildGraphInsights, buildLinkMapCsv } from '../../analysis/graph/graphInsightsV2';
 import { Post } from '../../core/domain/types/Post';
 import { InternalLink } from '../../core/domain/types/InternalLink';
 
@@ -10,6 +11,7 @@ const KnowledgeGraphScreenV2 = () => {
   const [links, setLinks] = useState<InternalLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [graphWidth, setGraphWidth] = useState(900);
+  const [filter, setFilter] = useState<'all' | 'orphans' | 'hubs'>('all');
 
   useEffect(() => {
     const load = async () => {
@@ -35,6 +37,22 @@ const KnowledgeGraphScreenV2 = () => {
   }, []);
 
   const graphData = useMemo<GraphData>(() => buildGraphData(posts, links), [posts, links]);
+  const insights = useMemo(() => buildGraphInsights(posts, links), [posts, links]);
+  const filteredGraphData = useMemo<GraphData>(() => {
+    if (filter === 'all') return graphData;
+    if (filter === 'orphans') {
+      const orphanIds = new Set(insights.orphanPosts.map((item) => item.postId));
+      const nodes = graphData.nodes.filter((node) => orphanIds.has(node.id));
+      return { nodes, links: [] };
+    }
+    if (filter === 'hubs') {
+      const hubIds = new Set(insights.topInbound.map((item) => item.postId));
+      const nodes = graphData.nodes.filter((node) => hubIds.has(node.id));
+      const linksFiltered = graphData.links.filter((link) => hubIds.has(link.source) || hubIds.has(link.target));
+      return { nodes, links: linksFiltered };
+    }
+    return graphData;
+  }, [filter, graphData, insights]);
 
   const topCategory = useMemo(() => {
     const counts = new Map<string, number>();
@@ -57,6 +75,19 @@ const KnowledgeGraphScreenV2 = () => {
     URL.revokeObjectURL(url);
   };
 
+  const downloadLinkMap = () => {
+    const csv = buildLinkMapCsv(links);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `link-map-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return <div>Building knowledge graph...</div>;
   }
@@ -66,17 +97,36 @@ const KnowledgeGraphScreenV2 = () => {
       <div className="graph-header">
         <div>
           <h2>Knowledge Graph</h2>
-          <p>Inspect internal linking strength before exporting to BlogCMS.</p>
+          <p>Inspect internal linking strength, orphans, and hub posts before export.</p>
         </div>
-        <button className="btn-secondary" onClick={downloadGraphJson}>
-          Download Graph JSON
-        </button>
+        <div className="graph-actions">
+          <button className="btn-secondary" onClick={downloadGraphJson}>
+            Download Graph JSON
+          </button>
+          <button className="btn-secondary" onClick={downloadLinkMap}>
+            Download Link Map CSV
+          </button>
+        </div>
       </div>
 
       <div className="graph-summary">
-        <span>Nodes: {graphData.nodes.length}</span>
-        <span>Links: {graphData.links.length}</span>
+        <span>Nodes: {insights.nodes}</span>
+        <span>Links: {insights.links}</span>
+        <span>Avg outbound: {insights.avgOutbound.toFixed(1)}</span>
+        <span>Avg inbound: {insights.avgInbound.toFixed(1)}</span>
         <span>Top category: {topCategory}</span>
+      </div>
+
+      <div className="graph-filters">
+        {(['all', 'orphans', 'hubs'] as const).map((option) => (
+          <button
+            key={option}
+            className={`btn-secondary${filter === option ? ' qa-active' : ''}`}
+            onClick={() => setFilter(option)}
+          >
+            {option === 'all' ? 'All nodes' : option === 'orphans' ? 'Orphans' : 'Hub posts'}
+          </button>
+        ))}
       </div>
 
       <div className="graph-preview">
@@ -97,7 +147,7 @@ const KnowledgeGraphScreenV2 = () => {
         <h3>Interactive Graph</h3>
         <div className="graph-frame">
           <ForceGraph2D
-            graphData={graphData}
+            graphData={filteredGraphData}
             width={graphWidth}
             height={520}
             nodeAutoColorBy="group"
@@ -105,6 +155,37 @@ const KnowledgeGraphScreenV2 = () => {
             linkColor={() => 'rgba(15, 27, 32, 0.2)'}
             nodeRelSize={4}
           />
+        </div>
+      </div>
+
+      <div className="graph-insights">
+        <div className="graph-panel">
+          <h3>Top Linked (Inbound)</h3>
+          <ul>
+            {insights.topInbound.map((item) => (
+              <li key={item.postId}>
+                {item.title} ({item.inbound})
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="graph-panel">
+          <h3>Top Linking (Outbound)</h3>
+          <ul>
+            {insights.topOutbound.map((item) => (
+              <li key={item.postId}>
+                {item.title} ({item.outbound})
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="graph-panel">
+          <h3>Orphan Posts</h3>
+          <ul>
+            {insights.orphanPosts.slice(0, 10).map((item) => (
+              <li key={item.postId}>{item.title}</li>
+            ))}
+          </ul>
         </div>
       </div>
 
