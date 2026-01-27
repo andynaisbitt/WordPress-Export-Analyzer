@@ -1516,6 +1516,12 @@ body[data-theme="dark"] .remediation-panel {
   background: #151a1d;
 }
 
+body[data-theme="dark"] .graph-card {
+  background: #1a2124;
+  border-color: #2f3a40;
+  color: var(--ink);
+}
+
 body[data-theme="dark"] .post-detail-card,
 body[data-theme="dark"] .post-html-preview,
 body[data-theme="dark"] .post-detail-editor textarea,
