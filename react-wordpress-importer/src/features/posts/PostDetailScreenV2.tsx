@@ -4,6 +4,7 @@ import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { useToastV2 as useToast } from '../../ui/toast/useToastV2';
 import { Post } from '../../core/domain/types/Post';
 import { htmlToMarkdown, cleanWordpressHtml } from '../../analysis/markdownCleanerV2';
+import { parseGutenbergBlocks } from '../../analysis/gutenbergBlocksV2';
 
 const PostDetailScreenV2 = () => {
   const { id } = useParams();
@@ -13,7 +14,7 @@ const PostDetailScreenV2 = () => {
   const [post, setPost] = useState<Post | null>(null);
   const [draft, setDraft] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'html' | 'markdown' | 'preview'>('preview');
+  const [viewMode, setViewMode] = useState<'html' | 'markdown' | 'preview' | 'blocks'>('preview');
   const backTo = (location.state as { backTo?: string } | undefined)?.backTo ?? '/posts';
   const backLabel = backTo === '/pages' ? 'Back to Pages' : 'Back to Posts';
 
@@ -52,6 +53,11 @@ const PostDetailScreenV2 = () => {
   const markdown = useMemo(() => {
     const html = draft?.ContentEncoded || draft?.CleanedHtmlSource || '';
     return htmlToMarkdown(html);
+  }, [draft?.ContentEncoded, draft?.CleanedHtmlSource]);
+
+  const blocks = useMemo(() => {
+    const html = draft?.ContentEncoded || draft?.CleanedHtmlSource || '';
+    return parseGutenbergBlocks(html);
   }, [draft?.ContentEncoded, draft?.CleanedHtmlSource]);
 
   if (loading) {
@@ -132,6 +138,9 @@ const PostDetailScreenV2 = () => {
           <button className={`btn-secondary${viewMode === 'markdown' ? ' qa-active' : ''}`} onClick={() => setViewMode('markdown')}>
             Markdown
           </button>
+          <button className={`btn-secondary${viewMode === 'blocks' ? ' qa-active' : ''}`} onClick={() => setViewMode('blocks')}>
+            Block View
+          </button>
         </div>
         {viewMode === 'preview' && (
           <div className="post-html-preview" dangerouslySetInnerHTML={{ __html: draft.ContentEncoded || draft.CleanedHtmlSource || '' }} />
@@ -150,6 +159,25 @@ const PostDetailScreenV2 = () => {
         )}
         {viewMode === 'markdown' && (
           <textarea value={draft.Markdown || markdown} readOnly />
+        )}
+        {viewMode === 'blocks' && (
+          <div className="block-view">
+            {blocks.map((block, index) => (
+              <div key={`${block.kind}-${index}`} className="block-card">
+                <div className="block-header">
+                  <strong>{block.kind === 'block' ? block.name : 'html'}</strong>
+                </div>
+                {block.kind === 'block' ? (
+                  <>
+                    <pre>{JSON.stringify(block.attrs, null, 2)}</pre>
+                    {block.html && <div className="post-html-preview" dangerouslySetInnerHTML={{ __html: block.html }} />}
+                  </>
+                ) : (
+                  <textarea value={block.markdown} readOnly />
+                )}
+              </div>
+            ))}
+          </div>
         )}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <button

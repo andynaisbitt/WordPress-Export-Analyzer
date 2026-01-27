@@ -577,6 +577,29 @@ input[type="text"] {
   overflow: auto;
 }
 
+.block-view {
+  display: grid;
+  gap: 12px;
+}
+
+.block-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 8px;
+}
+
+.block-card pre {
+  background: #111b1f;
+  color: #d7e3e4;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
 .post-detail-editor textarea {
   min-height: 320px;
   border-radius: var(--radius-md);
