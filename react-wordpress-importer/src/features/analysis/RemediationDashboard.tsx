@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { VariableSizeList as List } from 'react-window';
-import type { VariableSizeList } from 'react-window';
+import { List } from 'react-window';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { Post } from '../../core/domain/types/Post';
 import { findMissingMetaDescription, findMissingTitles } from '../../analysis/seo/seoAuditV3';
@@ -25,7 +24,6 @@ const RemediationDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, { title?: string; description?: string }>>({});
-  const listRef = useRef<VariableSizeList | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -59,10 +57,6 @@ const RemediationDashboard = () => {
       });
     setIssues(issueList);
   }, [posts]);
-
-  useEffect(() => {
-    listRef.current?.resetAfterIndex(0);
-  }, [expandedId, issues]);
 
   const summary = useMemo(() => {
     const active = issues.filter((issue) => !issue.resolved);
@@ -139,14 +133,11 @@ const RemediationDashboard = () => {
       </div>
 
       <List
-        ref={listRef}
         height={Math.min(600, issues.length * ROW_HEIGHT + 16)}
         width="100%"
-        itemCount={issues.length}
-        itemSize={getItemSize}
-        className="remediation-list"
-      >
-        {({ index, style }) => {
+        rowCount={issues.length}
+        rowHeight={getItemSize}
+        rowComponent={({ index, style }) => {
           const issue = issues[index];
           if (!issue) return null;
           const isExpanded = expandedId === issue.postId;
@@ -221,7 +212,9 @@ const RemediationDashboard = () => {
             </div>
           );
         }}
-      </List>
+        rowProps={{}}
+        className="remediation-list"
+      />
     </div>
   );
 };
