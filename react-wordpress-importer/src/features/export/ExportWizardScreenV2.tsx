@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
-import { buildBlogCmsExportPack } from '../../export/v2/blogCmsExport';
+import { buildBlogCmsCsvBundle, buildBlogCmsExportPack, buildBlogCmsZip } from '../../export/v2/blogCmsExport';
 import { useToastV2 as useToast } from '../../ui/toast/useToastV2';
 import { Post } from '../../core/domain/types/Post';
 import { Category } from '../../core/domain/types/Category';
 import { Tag } from '../../core/domain/types/Tag';
 import { Attachment } from '../../core/domain/types/Attachment';
 import { PostMeta } from '../../core/domain/types/PostMeta';
+import { buildContentQaReport } from '../../analysis/contentQaV2';
 
 const ExportWizardScreenV2 = () => {
   const { showToast } = useToast();
@@ -42,6 +43,7 @@ const ExportWizardScreenV2 = () => {
 
   const pack = useMemo(() => {
     if (!data) return null;
+    const qa = buildContentQaReport(data.posts);
     return buildBlogCmsExportPack({
       posts: data.posts,
       categories: data.categories,
@@ -50,6 +52,7 @@ const ExportWizardScreenV2 = () => {
       postMeta: data.postMeta,
       defaultAuthorId: Number(defaultAuthorId || 1),
       preserveCanonical,
+      qa,
     });
   }, [data, defaultAuthorId, preserveCanonical]);
 
@@ -63,6 +66,41 @@ const ExportWizardScreenV2 = () => {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCsv = () => {
+    if (!pack) return;
+    const csvBundle = buildBlogCmsCsvBundle(pack);
+    const files = [
+      { name: 'blogcms-posts.csv', content: csvBundle.postsCsv },
+      { name: 'blogcms-categories.csv', content: csvBundle.categoriesCsv },
+      { name: 'blogcms-tags.csv', content: csvBundle.tagsCsv },
+      { name: 'blogcms-content-qa.csv', content: csvBundle.qaCsv },
+    ];
+    files.forEach((file) => {
+      const blob = new Blob([file.content], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  const downloadZip = async () => {
+    if (!pack) return;
+    const blob = await buildBlogCmsZip(pack);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `blogcms-export-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
@@ -224,6 +262,7 @@ const ExportWizardScreenV2 = () => {
             <span>Categories: {pack?.categories.length ?? 0}</span>
             <span>Tags: {pack?.tags.length ?? 0}</span>
             <span>Attachments: {pack?.attachments.length ?? 0}</span>
+            <span>QA flagged: {pack?.qa?.summary.flaggedPosts ?? 0}</span>
           </div>
           <label>
             Default BlogCMS author ID
@@ -241,9 +280,17 @@ const ExportWizardScreenV2 = () => {
             />
             Preserve original canonical URLs
           </label>
-          <button className="btn-primary" onClick={downloadPack} disabled={!pack}>
-            Download JSON pack
-          </button>
+          <div className="export-actions">
+            <button className="btn-primary" onClick={downloadPack} disabled={!pack}>
+              Download JSON pack
+            </button>
+            <button className="btn-secondary" onClick={downloadCsv} disabled={!pack}>
+              Download CSV bundle
+            </button>
+            <button className="btn-secondary" onClick={downloadZip} disabled={!pack}>
+              Download ZIP bundle
+            </button>
+          </div>
         </div>
 
         <div className="export-card">

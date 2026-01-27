@@ -4,6 +4,8 @@ import { Category } from '../../core/domain/types/Category';
 import { Post } from '../../core/domain/types/Post';
 import { PostMeta } from '../../core/domain/types/PostMeta';
 import { Tag } from '../../core/domain/types/Tag';
+import JSZip from 'jszip';
+import { ContentIssue } from '../../analysis/contentQaV2';
 
 export interface BlogCmsCategory {
   name: string;
@@ -45,6 +47,16 @@ export interface BlogCmsExportPack {
   tags: BlogCmsTag[];
   posts: BlogCmsPostDraft[];
   attachments: Attachment[];
+  qa?: {
+    summary: {
+      totalPosts: number;
+      flaggedPosts: number;
+      highSeverity: number;
+      mediumSeverity: number;
+      lowSeverity: number;
+    };
+    issues: ContentIssue[];
+  };
 }
 
 const slugify = (value: string, maxLength: number) => {
@@ -122,8 +134,18 @@ export const buildBlogCmsExportPack = (input: {
   postMeta: PostMeta[];
   defaultAuthorId: number;
   preserveCanonical: boolean;
+  qa?: {
+    summary: {
+      totalPosts: number;
+      flaggedPosts: number;
+      highSeverity: number;
+      mediumSeverity: number;
+      lowSeverity: number;
+    };
+    issues: ContentIssue[];
+  };
 }): BlogCmsExportPack => {
-  const { posts, categories, tags, attachments, postMeta, defaultAuthorId, preserveCanonical } = input;
+  const { posts, categories, tags, attachments, postMeta, defaultAuthorId, preserveCanonical, qa } = input;
   const metaByPostId = new Map<number, Record<string, string>>();
 
   postMeta.forEach((meta) => {
@@ -198,5 +220,118 @@ export const buildBlogCmsExportPack = (input: {
     tags: tagsOut,
     posts: postsOut,
     attachments,
+    qa,
   };
+};
+
+const toCsv = (headers: string[], rows: (string | number | boolean | null | undefined)[][]) => {
+  const escape = (value: string | number | boolean | null | undefined) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  return [headers.join(','), ...rows.map((row) => row.map(escape).join(','))].join('\n');
+};
+
+export const buildBlogCmsCsvBundle = (pack: BlogCmsExportPack) => {
+  const categoryHeaders = ['name', 'slug', 'description', 'parent_slug'];
+  const categoryRows = pack.categories.map((cat) => [cat.name, cat.slug, cat.description, cat.parent_slug]);
+
+  const tagHeaders = ['name', 'slug', 'description'];
+  const tagRows = pack.tags.map((tag) => [tag.name, tag.slug, tag.description]);
+
+  const postHeaders = [
+    'title',
+    'slug',
+    'excerpt',
+    'content',
+    'meta_title',
+    'meta_description',
+    'meta_keywords',
+    'canonical_url',
+    'featured_image',
+    'featured_image_alt',
+    'featured_image_caption',
+    'published',
+    'published_at',
+    'scheduled_for',
+    'is_featured',
+    'allow_comments',
+    'author_id',
+    'tag_slugs',
+    'category_slugs',
+  ];
+  const postRows = pack.posts.map((post) => [
+    post.title,
+    post.slug,
+    post.excerpt,
+    post.content,
+    post.meta_title,
+    post.meta_description,
+    post.meta_keywords,
+    post.canonical_url,
+    post.featured_image,
+    post.featured_image_alt,
+    post.featured_image_caption,
+    post.published,
+    post.published_at,
+    post.scheduled_for,
+    post.is_featured,
+    post.allow_comments,
+    post.author_id,
+    (post.tag_slugs || []).join('|'),
+    (post.category_slugs || []).join('|'),
+  ]);
+
+  const qaHeaders = [
+    'post_id',
+    'title',
+    'slug',
+    'severity',
+    'issues',
+    'word_count',
+    'link_count',
+    'image_count',
+    'heading_count',
+    'shortcodes',
+    'gutenberg_comments',
+  ];
+  const qaRows = (pack.qa?.issues || []).map((issue) => [
+    issue.postId,
+    issue.title,
+    issue.slug,
+    issue.severity,
+    issue.issues.join('; '),
+    issue.wordCount,
+    issue.linkCount,
+    issue.imageCount,
+    issue.headingCount,
+    issue.hasShortcodes ? 'yes' : 'no',
+    issue.hasWpComments ? 'yes' : 'no',
+  ]);
+
+  return {
+    categoriesCsv: toCsv(categoryHeaders, categoryRows),
+    tagsCsv: toCsv(tagHeaders, tagRows),
+    postsCsv: toCsv(postHeaders, postRows),
+    qaCsv: toCsv(qaHeaders, qaRows),
+  };
+};
+
+export const buildBlogCmsZip = async (pack: BlogCmsExportPack) => {
+  const zip = new JSZip();
+  const csv = buildBlogCmsCsvBundle(pack);
+
+  zip.file('blogcms-pack.json', JSON.stringify(pack, null, 2));
+  zip.file('categories.csv', csv.categoriesCsv);
+  zip.file('tags.csv', csv.tagsCsv);
+  zip.file('posts.csv', csv.postsCsv);
+  if (pack.qa) {
+    zip.file('content-qa.csv', csv.qaCsv);
+  }
+
+  return zip.generateAsync({ type: 'blob' });
 };

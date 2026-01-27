@@ -650,6 +650,12 @@ input[type="text"] {
   font-size: 0.85rem;
 }
 
+.export-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .qa-screen {
   display: grid;
   gap: 16px;
