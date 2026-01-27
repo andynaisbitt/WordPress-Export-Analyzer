@@ -30,6 +30,73 @@ export interface SeoAuditReportV2 {
   lists: SeoAuditIssueLists;
 }
 
+export interface SeoIssueRow {
+  postId: number;
+  title: string;
+  slug: string;
+  source: string;
+  score: number;
+  severity: 'high' | 'medium' | 'low';
+  issues: string[];
+}
+
+export const buildSeoIssueRows = (report: SeoNormalizerReport): SeoIssueRow[] => {
+  return report.entries.map((entry) => {
+    const issues: string[] = [];
+    let score = 100;
+
+    if (!entry.seo.metaPresence.title) {
+      issues.push('Missing SEO title');
+      score -= 20;
+    }
+    if (!entry.seo.metaPresence.description) {
+      issues.push('Missing meta description');
+      score -= 20;
+    }
+    if (!entry.seo.metaPresence.canonical) {
+      issues.push('Missing canonical');
+      score -= 8;
+    }
+    if (!entry.seo.metaPresence.openGraphImage) {
+      issues.push('Missing OpenGraph image');
+      score -= 8;
+    }
+    if (!entry.seo.metaPresence.twitterTitle) {
+      issues.push('Missing Twitter title');
+      score -= 4;
+    }
+    if (!entry.seo.metaPresence.focusKeyword) {
+      issues.push('Missing focus keyword');
+      score -= 4;
+    }
+    if (!entry.seo.robots.index) {
+      issues.push('NoIndex enabled');
+      score -= 12;
+    }
+    if ((entry.seo.readabilityScore ?? 100) < 60) {
+      issues.push('Low readability score');
+      score -= 6;
+    }
+    if (entry.seo.schemaCount === 0) {
+      issues.push('No schema detected');
+      score -= 6;
+    }
+
+    const clamped = Math.max(0, Math.min(100, score));
+    const severity = clamped < 55 ? 'high' : clamped < 80 ? 'medium' : 'low';
+
+    return {
+      postId: entry.postId,
+      title: entry.title,
+      slug: entry.slug,
+      source: entry.seo.source,
+      score: clamped,
+      severity,
+      issues,
+    };
+  });
+};
+
 export const buildSeoAuditReportV2 = (report: SeoNormalizerReport): SeoAuditReportV2 => {
   const entries = report.entries;
   const missingTitle = entries.filter((entry) => !entry.seo.metaPresence.title);

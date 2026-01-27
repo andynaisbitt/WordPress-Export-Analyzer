@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
-import { buildSeoAuditReportV2 } from '../../analysis/seo/seoAuditInsightsV2';
+import { buildSeoAuditReportV2, buildSeoIssueRows, SeoIssueRow } from '../../analysis/seo/seoAuditInsightsV2';
 import { normalizeSeoForPosts } from '../../analysis/seo/seoNormalizerV2';
 import { extractJsonLdSchemas } from '../../analysis/seo/schemaExtractor';
 import { Post } from '../../core/domain/types/Post';
@@ -28,6 +28,8 @@ const SeoAuditScreenV2 = () => {
   const summary = auditReport.summary;
   const lists = auditReport.lists;
   const [previewId, setPreviewId] = useState<number | null>(null);
+  const [issueFilter, setIssueFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [issueQuery, setIssueQuery] = useState('');
 
   useEffect(() => {
     if (!previewId && normalizedReport.entries.length > 0) {
@@ -39,6 +41,43 @@ const SeoAuditScreenV2 = () => {
     () => normalizedReport.entries.find((entry) => entry.postId === previewId) ?? normalizedReport.entries[0],
     [normalizedReport.entries, previewId]
   );
+
+  const issueRows = useMemo(() => buildSeoIssueRows(normalizedReport), [normalizedReport]);
+  const filteredRows = useMemo(() => {
+    const severityFiltered = issueFilter === 'all'
+      ? issueRows
+      : issueRows.filter((row) => row.severity === issueFilter);
+    if (!issueQuery) return severityFiltered;
+    const needle = issueQuery.toLowerCase();
+    return severityFiltered.filter((row) =>
+      row.title.toLowerCase().includes(needle) ||
+      row.slug.toLowerCase().includes(needle) ||
+      row.issues.some((issue) => issue.toLowerCase().includes(needle))
+    );
+  }, [issueRows, issueFilter, issueQuery]);
+
+  const exportIssueCsv = (rows: SeoIssueRow[]) => {
+    const headers = ['post_id', 'title', 'slug', 'source', 'score', 'severity', 'issues'];
+    const lines = rows.map((row) => [
+      row.postId,
+      `"${row.title.replace(/"/g, '""')}"`,
+      row.slug,
+      row.source,
+      row.score,
+      row.severity,
+      `"${row.issues.join('; ').replace(/"/g, '""')}"`
+    ]);
+    const csv = [headers.join(','), ...lines.map((line) => line.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `seo-issues-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return <div>Loading SEO audit...</div>;
@@ -173,6 +212,61 @@ const SeoAuditScreenV2 = () => {
           </div>
         </div>
       )}
+
+      <div className="seo-issues">
+        <div className="seo-issues-header">
+          <div>
+            <h3>SEO Issue Ledger</h3>
+            <p>Every post scored with severity and exact reasons.</p>
+          </div>
+          <div className="seo-issues-actions">
+            <input
+              type="text"
+              placeholder="Filter issues (e.g. canonical)"
+              value={issueQuery}
+              onChange={(event) => setIssueQuery(event.target.value)}
+            />
+            <button className="btn-secondary" onClick={() => exportIssueCsv(filteredRows)}>
+              Export CSV
+            </button>
+          </div>
+        </div>
+        <div className="seo-issues-filters">
+          {(['all', 'high', 'medium', 'low'] as const).map((level) => (
+            <button
+              key={level}
+              className={`btn-secondary${issueFilter === level ? ' qa-active' : ''}`}
+              onClick={() => setIssueFilter(level)}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Score</th>
+              <th>Severity</th>
+              <th>Title</th>
+              <th>Slug</th>
+              <th>Source</th>
+              <th>Issues</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRows.map((row) => (
+              <tr key={row.postId}>
+                <td>{row.score}</td>
+                <td>{row.severity}</td>
+                <td>{row.title}</td>
+                <td>{row.slug}</td>
+                <td>{row.source}</td>
+                <td>{row.issues.join(', ') || 'OK'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="seo-lists">
         <div className="seo-list">

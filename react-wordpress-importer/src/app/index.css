@@ -823,6 +823,36 @@ input[type="text"] {
   flex-wrap: wrap;
 }
 
+.plugin-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.plugin-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 8px;
+}
+
+.plugin-card h4 {
+  margin: 0;
+}
+
+.plugin-meta {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.plugin-keys {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  word-break: break-word;
+}
+
 .seo-audit {
   display: grid;
   gap: 16px;
@@ -917,6 +947,34 @@ input[type="text"] {
 .seo-preview-card span {
   font-size: 0.8rem;
   color: var(--ink-muted);
+}
+
+.seo-issues {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 12px;
+}
+
+.seo-issues-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.seo-issues-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.seo-issues-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .seo-lists {
