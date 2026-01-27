@@ -13,12 +13,14 @@
 - Posts, Pages, Categories, Tags, Authors, Comments, Attachments, Post Meta views are wired.
 - Post editor added (local-only edits in IndexedDB).
 - Media Manifest view is working.
+- Content QA screen added (flags formatting issues + word stats).
+- BlogCMS exports available: JSON, CSV, ZIP bundles.
 - BlogCMS export pack + API import screen added.
 
 Known gaps / issues:
 - Internal Links view can lag on large datasets (now capped by default; Load all optional).
 - Cleanup tools implemented (clear DB, remove empty posts/pages).
-- BlogCMS export format not implemented yet (needs target schema).
+- BlogCMS export pack implemented (JSON/CSV/ZIP).
 
 ## ✨ Overview
 
