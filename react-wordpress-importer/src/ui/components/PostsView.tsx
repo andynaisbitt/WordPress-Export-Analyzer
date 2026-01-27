@@ -109,6 +109,16 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
     return Array.from(unique);
   }, [allPosts]);
 
+  const formatStatus = (status: string) => {
+    if (!status) return 'unknown';
+    const normalized = status.toLowerCase();
+    if (normalized === 'publish') return 'published';
+    if (normalized === 'future') return 'scheduled';
+    if (normalized === 'private') return 'private';
+    if (normalized === 'draft') return 'draft';
+    return normalized;
+  };
+
   const qaReport = useMemo(() => buildContentQaReport(allPosts), [allPosts]);
   const qaByPostId = useMemo(() => {
     const map = new Map<number, { severity: string; issues: number }>();
@@ -196,7 +206,7 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
                 <tr key={post.PostId}>
                   <td>{post.PostId}</td>
                   <td>{post.Title}</td>
-                  <td>{post.Status}</td>
+                  <td>{formatStatus(post.Status)}</td>
                   <td>{post.PostDate ? new Date(post.PostDate).toLocaleDateString() : 'N/A'}</td>
                   <td>{post.Creator}</td>
                   <td>
