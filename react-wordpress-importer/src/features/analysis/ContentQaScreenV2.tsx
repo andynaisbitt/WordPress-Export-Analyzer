@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { buildContentQaReport, ContentIssue } from '../../analysis/contentQaV2';
 import { useNavigate } from 'react-router-dom';
+import { applyMarkdownToPosts, cleanWordpressHtml } from '../../analysis/markdownCleanerV2';
 
 const ContentQaScreenV2 = () => {
   const [issues, setIssues] = useState<ContentIssue[]>([]);
@@ -9,6 +10,7 @@ const ContentQaScreenV2 = () => {
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [issueFilter, setIssueFilter] = useState('');
   const navigate = useNavigate();
+  const [actionBusy, setActionBusy] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -126,6 +128,43 @@ const ContentQaScreenV2 = () => {
         </button>
         <button className="btn-secondary" onClick={() => downloadCsv(issues, `content-qa-all-${new Date().toISOString().slice(0, 10)}.csv`)}>
           Export all
+        </button>
+        <button
+          className="btn-secondary"
+          disabled={actionBusy || filtered.length === 0}
+          onClick={async () => {
+            setActionBusy(true);
+            const db = new IndexedDbService();
+            await db.openDatabase();
+            const posts = await db.getPosts();
+            const targetIds = new Set(filtered.map((issue) => issue.postId));
+            const updated = applyMarkdownToPosts(posts.filter((post) => targetIds.has(post.PostId)));
+            await Promise.all(updated.map((post) => db.updateData('posts', post)));
+            setActionBusy(false);
+          }}
+        >
+          {actionBusy ? 'Processing...' : 'Generate Markdown (filtered)'}
+        </button>
+        <button
+          className="btn-secondary"
+          disabled={actionBusy || filtered.length === 0}
+          onClick={async () => {
+            setActionBusy(true);
+            const db = new IndexedDbService();
+            await db.openDatabase();
+            const posts = await db.getPosts();
+            const targetIds = new Set(filtered.map((issue) => issue.postId));
+            const updated = posts
+              .filter((post) => targetIds.has(post.PostId))
+              .map((post) => ({
+                ...post,
+                CleanedHtmlSource: cleanWordpressHtml(post.CleanedHtmlSource || post.ContentEncoded || ''),
+              }));
+            await Promise.all(updated.map((post) => db.updateData('posts', post)));
+            setActionBusy(false);
+          }}
+        >
+          {actionBusy ? 'Processing...' : 'Clean HTML (filtered)'}
         </button>
       </div>
 

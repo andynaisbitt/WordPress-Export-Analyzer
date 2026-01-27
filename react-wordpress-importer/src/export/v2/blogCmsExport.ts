@@ -186,7 +186,7 @@ export const buildBlogCmsExportPack = (input: {
       const attachmentAlt = metaValue(attachmentMeta, ['_wp_attachment_image_alt']);
 
       const htmlContent = post.ContentEncoded || post.CleanedHtmlSource || '';
-      const markdown = toMarkdown(decodeHtml(htmlContent));
+      const markdown = post.Markdown || toMarkdown(decodeHtml(htmlContent));
       const excerptSource = post.Excerpt || stripHtml(htmlContent);
       const excerpt = truncate(stripHtml(excerptSource), 500);
       const published = post.Status === 'publish';

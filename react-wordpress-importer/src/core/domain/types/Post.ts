@@ -12,6 +12,7 @@ export interface Post {
     Excerpt?: string;
     CategorySlugs?: string[];
     TagSlugs?: string[];
+    Markdown?: string;
     Creator: string;
     Status: string;
     // Add other properties as needed from the C# Post model

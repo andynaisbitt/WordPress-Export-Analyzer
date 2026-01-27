@@ -4,6 +4,7 @@ import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { useToastV2 as useToast } from '../../ui/toast/useToastV2';
 import { Post } from '../../core/domain/types/Post';
 import TurndownService from 'turndown';
+import { htmlToMarkdown, cleanWordpressHtml } from '../../analysis/markdownCleanerV2';
 
 const PostDetailScreenV2 = () => {
   const { id } = useParams();
@@ -55,11 +56,7 @@ const PostDetailScreenV2 = () => {
 
   const markdown = useMemo(() => {
     const html = draft?.ContentEncoded || draft?.CleanedHtmlSource || '';
-    const turndown = new TurndownService({
-      headingStyle: 'atx',
-      codeBlockStyle: 'fenced',
-    });
-    return turndown.turndown(html);
+    return htmlToMarkdown(html);
   }, [draft?.ContentEncoded, draft?.CleanedHtmlSource]);
 
   if (!post || !draft) {
@@ -153,8 +150,27 @@ const PostDetailScreenV2 = () => {
           />
         )}
         {viewMode === 'markdown' && (
-          <textarea value={markdown} readOnly />
+          <textarea value={draft.Markdown || markdown} readOnly />
         )}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            className="btn-secondary"
+            onClick={() => setDraft({ ...draft, Markdown: markdown })}
+          >
+            Save Markdown Snapshot
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() =>
+              setDraft({
+                ...draft,
+                CleanedHtmlSource: cleanWordpressHtml(draft.CleanedHtmlSource || draft.ContentEncoded || ''),
+              })
+            }
+          >
+            Clean HTML Source
+          </button>
+        </div>
       </div>
 
       {draft.Link && (

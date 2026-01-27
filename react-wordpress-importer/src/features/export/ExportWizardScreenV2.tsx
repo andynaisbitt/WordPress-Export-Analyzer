@@ -8,6 +8,7 @@ import { Tag } from '../../core/domain/types/Tag';
 import { Attachment } from '../../core/domain/types/Attachment';
 import { PostMeta } from '../../core/domain/types/PostMeta';
 import { buildContentQaReport } from '../../analysis/contentQaV2';
+import { buildMediaManifestCsv, buildMediaZip } from '../../export/v2/mediaExportV2';
 
 const ExportWizardScreenV2 = () => {
   const { showToast } = useToast();
@@ -98,6 +99,33 @@ const ExportWizardScreenV2 = () => {
     const link = document.createElement('a');
     link.href = url;
     link.download = `blogcms-export-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadMediaManifest = () => {
+    if (!data) return;
+    const { csv } = buildMediaManifestCsv(data.posts, data.attachments);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `media-manifest-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadMediaZip = async () => {
+    if (!data) return;
+    const blob = await buildMediaZip(data.attachments);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `media-download-${new Date().toISOString().slice(0, 10)}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -319,6 +347,20 @@ const ExportWizardScreenV2 = () => {
           <p className="export-note">
             Media uploads are not automated yet; featured images keep the original WordPress URLs.
           </p>
+        </div>
+        <div className="export-card">
+          <h3>Media Migration</h3>
+          <p className="export-note">
+            Generate a media manifest CSV or attempt to download attachments into a ZIP. Some hosts may block downloads due to CORS.
+          </p>
+          <div className="export-actions">
+            <button className="btn-secondary" onClick={downloadMediaManifest} disabled={!data}>
+              Download Media Manifest CSV
+            </button>
+            <button className="btn-secondary" onClick={downloadMediaZip} disabled={!data}>
+              Download Media ZIP
+            </button>
+          </div>
         </div>
       </div>
 
