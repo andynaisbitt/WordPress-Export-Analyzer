@@ -1478,6 +1478,54 @@ body[data-theme="dark"] .qa-pill.qa-high {
   color: #e28a8a;
 }
 
+body[data-theme="dark"] .stepper-step {
+  background: #1a2124;
+  border-color: #2f3a40;
+}
+
+body[data-theme="dark"] .stepper-dot {
+  background: #222a2f;
+  color: var(--ink-muted);
+}
+
+body[data-theme="dark"] .stepper-dot-active {
+  background: var(--accent);
+  color: #0e1112;
+}
+
+body[data-theme="dark"] .stepper-line {
+  background: #2a3338;
+}
+
+body[data-theme="dark"] .stepper-line-active {
+  background: linear-gradient(90deg, #4a9a8b, #79d1c8);
+}
+
+body[data-theme="dark"] .file-input {
+  background: #1b2226;
+  border-color: #2f3a40;
+  color: var(--ink);
+}
+
+body[data-theme="dark"] .progress-bar {
+  background: #1c2327;
+}
+
+body[data-theme="dark"] .progress-bar-fill {
+  background: linear-gradient(90deg, #4a9a8b, #79d1c8);
+}
+
+body[data-theme="dark"] .upload-badge,
+body[data-theme="dark"] .header-badge {
+  background: #1f262a;
+  color: var(--ink);
+  border-color: #2f3a40;
+}
+
+body[data-theme="dark"] .btn-primary {
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
+}
+
 body[data-theme="dark"] .dashboard-hero {
   background: linear-gradient(135deg, #1b2326, #151a1d);
   border-color: #2f3a40;
