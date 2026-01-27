@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { useToastV2 as useToast } from '../../ui/toast/useToastV2';
 import { Post } from '../../core/domain/types/Post';
-import TurndownService from 'turndown';
 import { htmlToMarkdown, cleanWordpressHtml } from '../../analysis/markdownCleanerV2';
 
 const PostDetailScreenV2 = () => {
