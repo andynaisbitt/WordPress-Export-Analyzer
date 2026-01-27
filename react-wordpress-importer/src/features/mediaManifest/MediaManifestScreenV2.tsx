@@ -82,12 +82,12 @@ const MediaManifestScreenV2: React.FC = () => {
   ];
 
   const renderRow = (row: MediaManifestRow) => (
-    <div className="table-row" style={{ display: 'flex' }}>
-      <div className="table-cell" style={{ flex: '2fr' }}>{row.filename}</div>
-      <div className="table-cell" style={{ flex: '1fr' }}>{row.status}</div>
-      <div className="table-cell" style={{ flex: '1fr' }}>{row.type}</div>
-      <div className="table-cell" style={{ flex: '1fr' }}>{row.whereUsedPostIds.join(', ')}</div>
-      <div className="table-cell" style={{ flex: '3fr', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.url}</div>
+    <div className="virtual-table-row">
+      <div className="virtual-table-cell" style={{ width: 220 }}>{row.filename}</div>
+      <div className="virtual-table-cell" style={{ width: 120 }}>{row.status}</div>
+      <div className="virtual-table-cell" style={{ width: 120 }}>{row.type}</div>
+      <div className="virtual-table-cell" style={{ width: 160 }}>{row.whereUsedPostIds.join(', ')}</div>
+      <div className="virtual-table-cell" style={{ width: 420, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.url}</div>
     </div>
   );
 
@@ -96,12 +96,12 @@ const MediaManifestScreenV2: React.FC = () => {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <button onClick={() => setFilter('all')} disabled={filter === 'all'}>All</button>
-        <button onClick={() => setFilter('missing')} disabled={filter === 'missing'}>Missing</button>
-        <button onClick={() => setFilter('matched')} disabled={filter === 'matched'}>Matched</button>
-        <button onClick={downloadCsv}>Download CSV</button>
+    <div className="media-manifest">
+      <div className="media-manifest-actions">
+        <button className="btn-secondary" onClick={() => setFilter('all')} disabled={filter === 'all'}>All</button>
+        <button className="btn-secondary" onClick={() => setFilter('missing')} disabled={filter === 'missing'}>Missing</button>
+        <button className="btn-secondary" onClick={() => setFilter('matched')} disabled={filter === 'matched'}>Matched</button>
+        <button className="btn-secondary" onClick={downloadCsv}>Download CSV</button>
       </div>
       <VirtualTableV2
         data={filteredManifest}

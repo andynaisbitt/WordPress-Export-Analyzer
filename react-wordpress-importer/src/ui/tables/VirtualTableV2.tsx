@@ -41,13 +41,12 @@ const VirtualTableV2 = <T extends object>({
   };
 
   return (
-    <div style={{ border: '1px solid #eee', borderRadius: '4px', overflow: 'hidden' }}>
+    <div className="virtual-table">
       {/* Table Header */}
       <div
+        className="virtual-table-header"
         style={{
           display: 'flex',
-          borderBottom: '1px solid #eee',
-          backgroundColor: '#f9f9f9',
           fontWeight: 'bold',
         }}
       >
