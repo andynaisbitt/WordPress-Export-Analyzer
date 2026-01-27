@@ -20,6 +20,7 @@ const AppLayout = () => {
     '/media-manifest': 'Media Manifest',
     '/cleanup': 'Cleanup',
     '/content-qa': 'Content QA',
+    '/seo-audit': 'SEO Audit',
     '/export': 'Export',
   };
   const pageTitle =

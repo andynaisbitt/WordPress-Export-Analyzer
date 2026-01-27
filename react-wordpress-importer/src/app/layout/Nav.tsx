@@ -33,6 +33,8 @@ const navLinks = [
 
   { path: '/content-qa', label: 'Content QA' },
 
+  { path: '/seo-audit', label: 'SEO Audit' },
+
   { path: '/export', label: 'Export' },
 
 ];

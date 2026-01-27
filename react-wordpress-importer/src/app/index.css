@@ -686,3 +686,36 @@ input[type="text"] {
   border-color: var(--accent-2);
   color: var(--accent-2);
 }
+
+.dashboard-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.dashboard-section h3 {
+  margin-top: 0;
+}
+
+.seo-audit {
+  display: grid;
+  gap: 16px;
+}
+
+.seo-lists {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.seo-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: #fbf7f1;
+}
+
+.seo-list ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--ink-muted);
+}
