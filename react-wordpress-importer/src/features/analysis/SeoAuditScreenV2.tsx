@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { buildSeoAuditReportV2 } from '../../analysis/seo/seoAuditInsightsV2';
 import { normalizeSeoForPosts } from '../../analysis/seo/seoNormalizerV2';
+import { extractJsonLdSchemas } from '../../analysis/seo/schemaExtractor';
 import { Post } from '../../core/domain/types/Post';
 import { PostMeta } from '../../core/domain/types/PostMeta';
 
@@ -55,6 +56,27 @@ const SeoAuditScreenV2 = () => {
           </div>
         </div>
         <div className="seo-actions">
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              const schemaPack = posts.map((post) => ({
+                postId: post.PostId,
+                slug: post.PostName || '',
+                schemas: extractJsonLdSchemas(post.ContentEncoded || post.CleanedHtmlSource || ''),
+              }));
+              const blob = new Blob([JSON.stringify(schemaPack, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `schema-pack-${new Date().toISOString().slice(0, 10)}.json`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download Schema Pack
+          </button>
           <button
             className="btn-secondary"
             onClick={() => {
