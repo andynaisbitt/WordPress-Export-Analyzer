@@ -90,7 +90,8 @@ const DashboardV2 = () => {
     const avgScore = seoIssueRows.reduce((sum, row) => sum + row.score, 0) / seoIssueRows.length;
     const qaPenalty = qaReport.summary.high * 4 + qaReport.summary.medium * 2;
     const linkPenalty = linkInsights.orphanPosts.length * 1.5;
-    const score = Math.max(0, Math.min(100, avgScore - qaPenalty * 0.2 - linkPenalty * 0.1));
+    const raw = avgScore - qaPenalty * 0.2 - linkPenalty * 0.1;
+    const score = Math.max(0, Math.min(100, Number.isFinite(raw) ? raw : 0));
     return Math.round(score);
   }, [seoIssueRows, qaReport.summary, linkInsights.orphanPosts.length]);
 

@@ -1478,6 +1478,26 @@ body[data-theme="dark"] .qa-pill.qa-high {
   color: #e28a8a;
 }
 
+body[data-theme="dark"] .dashboard-hero {
+  background: linear-gradient(135deg, #1b2326, #151a1d);
+  border-color: #2f3a40;
+}
+
+body[data-theme="dark"] .dashboard-hero-card {
+  background: #1a2124;
+  border-color: #2f3a40;
+}
+
+body[data-theme="dark"] .status-pill.status-live {
+  background: rgba(121, 209, 200, 0.18);
+  color: #79d1c8;
+}
+
+body[data-theme="dark"] .status-pill.status-idle {
+  background: rgba(241, 178, 122, 0.2);
+  color: #f1b27a;
+}
+
 .graph-insights {
   display: grid;
   gap: 12px;
