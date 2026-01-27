@@ -9,6 +9,7 @@ import { Attachment } from '../../core/domain/types/Attachment';
 import { PostMeta } from '../../core/domain/types/PostMeta';
 import { buildContentQaReport } from '../../analysis/contentQaV2';
 import { buildMediaManifestCsv, buildMediaZip } from '../../export/v2/mediaExportV2';
+import { buildAssetLaundromatZip } from '../../export/v2/assetLaundromatV2';
 
 const ExportWizardScreenV2 = () => {
   const { showToast } = useToast();
@@ -17,6 +18,7 @@ const ExportWizardScreenV2 = () => {
   const [token, setToken] = useState('');
   const [preserveCanonical, setPreserveCanonical] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [assetLoading, setAssetLoading] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [data, setData] = useState<{
     posts: Post[];
@@ -130,6 +132,28 @@ const ExportWizardScreenV2 = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const downloadCleanAssetZip = async () => {
+    if (!data || !pack) return;
+    setAssetLoading(true);
+    try {
+      const blob = await buildAssetLaundromatZip({
+        pack,
+        posts: data.posts,
+        attachments: data.attachments,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `blogcms-clean-assets-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setAssetLoading(false);
+    }
   };
 
   const appendLog = (entry: string) => {
@@ -359,6 +383,17 @@ const ExportWizardScreenV2 = () => {
             </button>
             <button className="btn-secondary" onClick={downloadMediaZip} disabled={!data}>
               Download Media ZIP
+            </button>
+          </div>
+        </div>
+        <div className="export-card">
+          <h3>Asset Laundromat</h3>
+          <p className="export-note">
+            Rename media files to SEO-friendly names, update Markdown references, and download an updated BlogCMS pack with a clean media folder.
+          </p>
+          <div className="export-actions">
+            <button className="btn-secondary" onClick={downloadCleanAssetZip} disabled={!data || !pack || assetLoading}>
+              {assetLoading ? 'Preparing clean ZIP...' : 'Download Clean Media ZIP'}
             </button>
           </div>
         </div>

@@ -35,6 +35,12 @@ const navLinks = [
 
   { path: '/seo-audit', label: 'SEO Audit' },
 
+  { path: '/remediation', label: 'Remediation' },
+
+  { path: '/knowledge-graph', label: 'Knowledge Graph' },
+
+  { path: '/taxonomy-cleaner', label: 'Taxonomy Cleaner' },
+
   { path: '/export', label: 'Export' },
 
 ];

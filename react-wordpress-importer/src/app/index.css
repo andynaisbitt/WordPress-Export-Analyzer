@@ -763,3 +763,157 @@ input[type="text"] {
   padding-left: 18px;
   color: var(--ink-muted);
 }
+
+.taxonomy-cleaner {
+  display: grid;
+  gap: 16px;
+}
+
+.taxonomy-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.taxonomy-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 12px;
+}
+
+.remediation-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.remediation-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.remediation-summary {
+  display: flex;
+  gap: 12px;
+  color: var(--ink-muted);
+  flex-wrap: wrap;
+}
+
+.remediation-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fbf7f1;
+}
+
+.remediation-row {
+  padding: 8px 12px;
+}
+
+.remediation-row-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  border: 1px solid var(--border);
+}
+
+.remediation-row-inner.resolved {
+  opacity: 0.5;
+}
+
+.remediation-title {
+  font-weight: 600;
+}
+
+.remediation-meta {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.remediation-panel {
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #fbf7f1;
+  display: grid;
+  gap: 10px;
+}
+
+.remediation-panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.remediation-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.knowledge-graph {
+  display: grid;
+  gap: 16px;
+}
+
+.graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.graph-summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: var(--ink-muted);
+}
+
+.graph-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.graph-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.graph-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 6px;
+}
+
+.graph-title {
+  font-weight: 600;
+}
+
+.graph-meta {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.graph-json pre {
+  max-height: 280px;
+  overflow: auto;
+  background: #111b1f;
+  color: #d7e3e4;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+}

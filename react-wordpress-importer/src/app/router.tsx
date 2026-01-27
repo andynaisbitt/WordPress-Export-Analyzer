@@ -18,6 +18,9 @@ import ExportWizardScreenV2 from '../features/export/ExportWizardScreenV2';
 import ContentQaScreenV2 from '../features/analysis/ContentQaScreenV2';
 import ExternalLinksScreenV2 from '../features/externallinks/ExternalLinksScreenV2';
 import SeoAuditScreenV2 from '../features/analysis/SeoAuditScreenV2';
+import TaxonomyCleaner from '../features/taxonomy/TaxonomyCleaner';
+import RemediationDashboard from '../features/analysis/RemediationDashboard';
+import KnowledgeGraphScreenV2 from '../features/analysis/KnowledgeGraphScreenV2';
 
 const router = createBrowserRouter([
   {
@@ -95,6 +98,18 @@ const router = createBrowserRouter([
       {
         path: 'seo-audit',
         element: <SeoAuditScreenV2 />,
+      },
+      {
+        path: 'remediation',
+        element: <RemediationDashboard />,
+      },
+      {
+        path: 'knowledge-graph',
+        element: <KnowledgeGraphScreenV2 />,
+      },
+      {
+        path: 'taxonomy-cleaner',
+        element: <TaxonomyCleaner />,
       },
     ],
   },

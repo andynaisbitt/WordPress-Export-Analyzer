@@ -10,6 +10,7 @@ const DashboardV2 = () => {
     totalPosts: 0,
     missingTitles: 0,
     missingExcerpts: 0,
+    missingMetaDescription: 0,
     shortContent: 0,
     duplicateSlugs: 0,
   });
@@ -69,6 +70,10 @@ const DashboardV2 = () => {
             <p>{seoSummary.missingExcerpts}</p>
           </div>
           <div className="stat-card">
+            <h4>Missing Meta Desc</h4>
+            <p>{seoSummary.missingMetaDescription}</p>
+          </div>
+          <div className="stat-card">
             <h4>Short Content</h4>
             <p>{seoSummary.shortContent}</p>
           </div>
@@ -84,8 +89,14 @@ const DashboardV2 = () => {
           <button className="btn-secondary" onClick={() => navigate('/seo-audit')}>
             Open SEO Audit
           </button>
+          <button className="btn-secondary" onClick={() => navigate('/remediation')}>
+            Open Remediation
+          </button>
           <button className="btn-secondary" onClick={() => navigate('/content-qa')}>
             Open Content QA
+          </button>
+          <button className="btn-secondary" onClick={() => navigate('/knowledge-graph')}>
+            Knowledge Graph
           </button>
           <button className="btn-secondary" onClick={() => navigate('/internal-links')}>
             Internal Links ({linkStats.internal})

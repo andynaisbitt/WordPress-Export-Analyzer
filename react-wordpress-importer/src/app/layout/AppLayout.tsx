@@ -21,6 +21,9 @@ const AppLayout = () => {
     '/cleanup': 'Cleanup',
     '/content-qa': 'Content QA',
     '/seo-audit': 'SEO Audit',
+    '/remediation': 'Remediation',
+    '/knowledge-graph': 'Knowledge Graph',
+    '/taxonomy-cleaner': 'Taxonomy Cleaner',
     '/export': 'Export',
   };
   const pageTitle =
@@ -37,7 +40,7 @@ const AppLayout = () => {
         </div>
         <Nav />
         <div className="sidebar-footer">
-          <span>Local-only processing • No server</span>
+          <span>Local-only processing * No server</span>
         </div>
       </aside>
       <main className="app-main">

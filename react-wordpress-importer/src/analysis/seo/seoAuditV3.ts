@@ -20,6 +20,9 @@ export const findDuplicateSlugs = (posts: Post[]) => {
 export const findMissingExcerpts = (posts: Post[]) =>
   posts.filter((post) => !post.Excerpt || post.Excerpt.trim().length < 20);
 
+export const findMissingMetaDescription = (posts: Post[]) =>
+  posts.filter((post) => !post.Excerpt || post.Excerpt.trim().length < 50);
+
 export const findShortContent = (posts: Post[], minWords = 120) =>
   posts.filter((post) => {
     const text = (post.ContentEncoded || post.CleanedHtmlSource || '').replace(/<[^>]+>/g, ' ');
@@ -33,6 +36,7 @@ export const buildSeoSummary = (posts: Post[]) => {
     totalPosts: onlyPosts.length,
     missingTitles: findMissingTitles(onlyPosts).length,
     missingExcerpts: findMissingExcerpts(onlyPosts).length,
+    missingMetaDescription: findMissingMetaDescription(onlyPosts).length,
     shortContent: findShortContent(onlyPosts).length,
     duplicateSlugs: findDuplicateSlugs(onlyPosts).length,
   };
