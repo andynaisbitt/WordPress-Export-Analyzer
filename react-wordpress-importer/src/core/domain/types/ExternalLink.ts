@@ -1,5 +1,5 @@
 export interface ExternalLink {
-  Id: number;
+  Id?: number;
   SourcePostId: number;
   SourcePostTitle: string;
   Url: string;

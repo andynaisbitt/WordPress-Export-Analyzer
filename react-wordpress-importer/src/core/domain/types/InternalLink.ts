@@ -1,7 +1,7 @@
 // react-wordpress-importer/src/types/InternalLink.ts
 
 export interface InternalLink {
-    Id: number;
+    Id?: number;
     SourcePostId: number;
     TargetPostId: number;
     AnchorText: string;

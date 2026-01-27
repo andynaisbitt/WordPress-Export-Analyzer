@@ -81,8 +81,8 @@ const ExternalLinksView: React.FC = () => {
       }
       await dbService.clearStore('internalLinks');
       await dbService.clearStore('externalLinks');
-      await dbService.addData('internalLinks', linkData.internalLinks);
-      await dbService.addData('externalLinks', linkData.externalLinks);
+      await dbService.addData('internalLinks', linkData.internalLinks.map((link) => ({ ...link, Id: undefined })));
+      await dbService.addData('externalLinks', linkData.externalLinks.map((link) => ({ ...link, Id: undefined })));
       const refreshed = await dbService.getExternalLinks();
       setAllLinks(refreshed);
     } catch (err) {
@@ -112,8 +112,8 @@ const ExternalLinksView: React.FC = () => {
 
   const downloadCsv = () => {
     const headers = ['id', 'source_post_id', 'source_title', 'anchor_text', 'url'];
-    const rows = filtered.map((link) => [
-      link.Id,
+    const rows = filtered.map((link, idx) => [
+      link.Id ?? idx + 1,
       link.SourcePostId,
       link.SourcePostTitle,
       link.AnchorText,
@@ -227,9 +227,9 @@ const ExternalLinksView: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {displayLinks.map((link) => (
-              <tr key={link.Id}>
-                <td>{link.Id}</td>
+            {displayLinks.map((link, idx) => (
+              <tr key={link.Id ?? `${link.SourcePostId}-${link.Url}-${idx}`}>
+                <td>{link.Id ?? idx + 1}</td>
                 <td>{link.SourcePostTitle}</td>
                 <td>{link.AnchorText || 'N/A'}</td>
                 <td>{link.Url}</td>

@@ -136,7 +136,6 @@ export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) =>
         const target = findTargetPost(href, posts);
         if (!target) stats.unresolvedInternal += 1;
         internalLinks.push({
-          Id: 0,
           SourcePostId: post.PostId,
           TargetPostId: target ? target.PostId : 0,
           AnchorText: link.text,
@@ -147,7 +146,6 @@ export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) =>
         });
       } else {
         externalLinks.push({
-          Id: 0,
           SourcePostId: post.PostId,
           SourcePostTitle: post.Title,
           Url: href,
