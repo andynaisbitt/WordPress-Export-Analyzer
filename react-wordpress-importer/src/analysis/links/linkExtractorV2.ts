@@ -21,6 +21,16 @@ const extractLinksFromHtml = (html: string) => {
   }));
 };
 
+const extractLinksFromMarkdown = (markdown: string) => {
+  const links: { href: string; text: string }[] = [];
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = linkRegex.exec(markdown)) !== null) {
+    links.push({ href: match[2], text: match[1].trim() });
+  }
+  return links;
+};
+
 const normalizeUrl = (url: string) => {
   return url.replace(/#.*$/, '').trim();
 };
@@ -72,10 +82,12 @@ export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) =>
   const externalLinks: ExternalLink[] = [];
 
   posts.forEach((post) => {
-    if (!post.ContentEncoded && !post.CleanedHtmlSource) return;
-    const html = post.ContentEncoded || post.CleanedHtmlSource || '';
-    const links = extractLinksFromHtml(html);
-    links.forEach((link) => {
+    const content = post.ContentEncoded || post.CleanedHtmlSource || post.Markdown || '';
+    if (!content) return;
+    const links = extractLinksFromHtml(content);
+    const markdownLinks = links.length === 0 && post.Markdown ? extractLinksFromMarkdown(post.Markdown) : [];
+    const allLinks = links.length > 0 ? links : markdownLinks;
+    allLinks.forEach((link) => {
       const href = normalizeUrl(link.href);
       if (!href) return;
       if (isInternalUrl(href, siteUrl)) {

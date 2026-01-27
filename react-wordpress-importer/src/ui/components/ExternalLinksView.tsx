@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { ExternalLink } from '../../core/domain/types/ExternalLink';
 import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
+import { SiteInfo } from '../../core/domain/types/SiteInfo';
 
 const ExternalLinksView: React.FC = () => {
   const [allLinks, setAllLinks] = useState<ExternalLink[]>([]);
@@ -10,6 +11,7 @@ const ExternalLinksView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
+  const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -20,6 +22,8 @@ const ExternalLinksView: React.FC = () => {
         await dbService.openDatabase();
         const fetched = await dbService.getExternalLinks();
         setAllLinks(fetched);
+        const loadedSiteInfo = await dbService.getSiteInfo();
+        setSiteInfo(loadedSiteInfo);
       } catch (err) {
         console.error('Error fetching external links:', err);
         setError('Failed to load external links.');
@@ -30,6 +34,22 @@ const ExternalLinksView: React.FC = () => {
 
     fetchLinks();
   }, []);
+
+  const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
+
+  const updateSiteUrl = async (value: string) => {
+    const dbService = new IndexedDbService();
+    await dbService.openDatabase();
+    const entry = { Key: 'link', Value: value };
+    const existing = siteInfo.find((info) => info.Key === 'link');
+    if (existing) {
+      await dbService.updateData('siteInfo', entry);
+      setSiteInfo((prev) => prev.map((info) => (info.Key === 'link' ? entry : info)));
+    } else {
+      await dbService.addData('siteInfo', [entry]);
+      setSiteInfo((prev) => [...prev, entry]);
+    }
+  };
 
   const rebuildLinks = async () => {
     setRebuilding(true);
@@ -102,6 +122,17 @@ const ExternalLinksView: React.FC = () => {
   return (
     <div className="external-links-view-container">
       <h2>External Links ({filtered.length})</h2>
+      <div className="graph-tools" style={{ marginBottom: '12px' }}>
+        <label>
+          Site URL
+          <input
+            type="text"
+            placeholder="https://yoursite.com"
+            value={siteUrl}
+            onChange={(event) => updateSiteUrl(event.target.value)}
+          />
+        </label>
+      </div>
       <input
         type="text"
         placeholder="Search external links..."
@@ -126,7 +157,9 @@ const ExternalLinksView: React.FC = () => {
         </div>
       )}
       {filtered.length === 0 ? (
-        <p>No external links found matching your search criteria.</p>
+        <div className="graph-warning">
+          No external links found. Check your Site URL and click “Rebuild Links”.
+        </div>
       ) : (
         <table>
           <thead>

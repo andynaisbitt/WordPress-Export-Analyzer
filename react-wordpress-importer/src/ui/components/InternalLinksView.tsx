@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { InternalLink } from '../../core/domain/types/InternalLink';
 import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
+import { SiteInfo } from '../../core/domain/types/SiteInfo';
 
 const InternalLinksView: React.FC = () => {
   const [allInternalLinks, setAllInternalLinks] = useState<InternalLink[]>([]);
@@ -12,6 +13,7 @@ const InternalLinksView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAll, setShowAll] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
+  const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
 
   useEffect(() => {
     const fetchInternalLinks = async () => {
@@ -22,6 +24,8 @@ const InternalLinksView: React.FC = () => {
         await dbService.openDatabase();
         const fetchedInternalLinks = await dbService.getInternalLinks();
         setAllInternalLinks(fetchedInternalLinks);
+        const loadedSiteInfo = await dbService.getSiteInfo();
+        setSiteInfo(loadedSiteInfo);
       } catch (err) {
         console.error("Error fetching internal links:", err);
         setError("Failed to load internal links.");
@@ -32,6 +36,22 @@ const InternalLinksView: React.FC = () => {
 
     fetchInternalLinks();
   }, []);
+
+  const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
+
+  const updateSiteUrl = async (value: string) => {
+    const dbService = new IndexedDbService();
+    await dbService.openDatabase();
+    const entry = { Key: 'link', Value: value };
+    const existing = siteInfo.find((info) => info.Key === 'link');
+    if (existing) {
+      await dbService.updateData('siteInfo', entry);
+      setSiteInfo((prev) => prev.map((info) => (info.Key === 'link' ? entry : info)));
+    } else {
+      await dbService.addData('siteInfo', [entry]);
+      setSiteInfo((prev) => [...prev, entry]);
+    }
+  };
 
   const rebuildLinks = async () => {
     setRebuilding(true);
@@ -113,6 +133,17 @@ const InternalLinksView: React.FC = () => {
   return (
     <div className="internal-links-view-container">
       <h2>Internal Links ({filteredInternalLinks.length} / {allInternalLinks.length})</h2>
+      <div className="graph-tools" style={{ marginBottom: '12px' }}>
+        <label>
+          Site URL
+          <input
+            type="text"
+            placeholder="https://yoursite.com"
+            value={siteUrl}
+            onChange={(event) => updateSiteUrl(event.target.value)}
+          />
+        </label>
+      </div>
       <input
         type="text"
         placeholder="Search internal links..."
@@ -137,7 +168,9 @@ const InternalLinksView: React.FC = () => {
         </div>
       )}
       {filteredInternalLinks.length === 0 && !loading && !error ? (
-        <p>No internal links found matching your search criteria.</p>
+        <div className="graph-warning">
+          No internal links found. Check your Site URL and click “Rebuild Links”.
+        </div>
       ) : (
         <table>
           <thead>
