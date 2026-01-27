@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ForceGraph2D from 'react-force-graph-2d';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { buildGraphData, GraphData } from '../../analysis/graph/GraphDataService';
 import { Post } from '../../core/domain/types/Post';
@@ -8,6 +9,7 @@ const KnowledgeGraphScreenV2 = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [links, setLinks] = useState<InternalLink[]>([]);
   const [loading, setLoading] = useState(true);
+  const [graphWidth, setGraphWidth] = useState(900);
 
   useEffect(() => {
     const load = async () => {
@@ -20,6 +22,16 @@ const KnowledgeGraphScreenV2 = () => {
       setLoading(false);
     };
     void load();
+  }, []);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      const width = Math.max(320, Math.min(1100, window.innerWidth - 360));
+      setGraphWidth(width);
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
   const graphData = useMemo<GraphData>(() => buildGraphData(posts, links), [posts, links]);
@@ -78,6 +90,21 @@ const KnowledgeGraphScreenV2 = () => {
               <div className="graph-meta">Category: {node.group}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="graph-canvas">
+        <h3>Interactive Graph</h3>
+        <div className="graph-frame">
+          <ForceGraph2D
+            graphData={graphData}
+            width={graphWidth}
+            height={520}
+            nodeAutoColorBy="group"
+            nodeLabel={(node: any) => `${node.name} (${node.group})`}
+            linkColor={() => 'rgba(15, 27, 32, 0.2)'}
+            nodeRelSize={4}
+          />
         </div>
       </div>
 

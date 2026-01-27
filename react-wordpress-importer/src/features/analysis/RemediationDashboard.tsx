@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { List } from 'react-window';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { Post } from '../../core/domain/types/Post';
-import { findMissingMetaDescription, findMissingTitles } from '../../analysis/seo/seoAuditV3';
+import { findDuplicateSlugs, findMissingMetaDescription, findMissingTitles, findShortContent } from '../../analysis/seo/seoAuditV3';
+import { useNavigate } from 'react-router-dom';
 
 interface RemediationIssue {
   postId: number;
@@ -11,6 +12,9 @@ interface RemediationIssue {
   slug: string;
   missingTitle: boolean;
   missingDescription: boolean;
+  missingSlug: boolean;
+  shortContent: boolean;
+  duplicateSlug: boolean;
   severity: 'High' | 'Medium';
   resolved?: boolean;
 }
@@ -24,6 +28,7 @@ const RemediationDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, { title?: string; description?: string }>>({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -40,19 +45,37 @@ const RemediationDashboard = () => {
   useEffect(() => {
     const missingTitle = new Set(findMissingTitles(posts).map((post) => post.PostId));
     const missingDescription = new Set(findMissingMetaDescription(posts).map((post) => post.PostId));
+    const missingSlug = new Set(posts.filter((post) => !post.PostName || post.PostName.trim().length < 3).map((post) => post.PostId));
+    const shortContent = new Set(findShortContent(posts).map((post) => post.PostId));
+    const duplicateSlugSet = new Set(
+      findDuplicateSlugs(posts)
+        .flatMap((dup) => dup.posts.map((post) => post.PostId))
+    );
     const issueList = posts
       .filter((post) => post.PostType === 'post')
-      .filter((post) => missingTitle.has(post.PostId) || missingDescription.has(post.PostId))
+      .filter((post) =>
+        missingTitle.has(post.PostId) ||
+        missingDescription.has(post.PostId) ||
+        missingSlug.has(post.PostId) ||
+        shortContent.has(post.PostId) ||
+        duplicateSlugSet.has(post.PostId)
+      )
       .map((post) => {
         const hasTitle = missingTitle.has(post.PostId);
         const hasDesc = missingDescription.has(post.PostId);
+        const hasSlug = missingSlug.has(post.PostId);
+        const hasShortContent = shortContent.has(post.PostId);
+        const hasDuplicateSlug = duplicateSlugSet.has(post.PostId);
         return {
           postId: post.PostId,
           title: post.Title || 'Untitled post',
           slug: post.PostName || '',
           missingTitle: hasTitle,
           missingDescription: hasDesc,
-          severity: hasTitle && hasDesc ? 'High' : 'Medium',
+          missingSlug: hasSlug,
+          shortContent: hasShortContent,
+          duplicateSlug: hasDuplicateSlug,
+          severity: hasTitle || hasSlug || hasDuplicateSlug ? 'High' : 'Medium',
         } as RemediationIssue;
       });
     setIssues(issueList);
@@ -79,11 +102,38 @@ const RemediationDashboard = () => {
     const original = posts.find((post) => post.PostId === issue.postId);
     if (!original) return;
 
+    const slugify = (value: string) =>
+      value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 120);
+
+    const existingSlugs = new Set(
+      posts
+        .filter((post) => post.PostId !== issue.postId)
+        .map((post) => post.PostName)
+        .filter(Boolean)
+    );
+
+    const ensureUniqueSlug = (base: string) => {
+      let slug = base || `post-${issue.postId}`;
+      let counter = 2;
+      while (existingSlugs.has(slug)) {
+        slug = `${base}-${counter}`;
+        counter += 1;
+      }
+      return slug;
+    };
+
     const draft = drafts[issue.postId] || {};
     const updated: Post = {
       ...original,
       Title: issue.missingTitle ? draft.title || 'Untitled post' : original.Title,
       Excerpt: issue.missingDescription ? draft.description || original.Excerpt || '' : original.Excerpt,
+      PostName: issue.missingSlug || issue.duplicateSlug ? ensureUniqueSlug(slugify(original.Title || `post-${issue.postId}`)) : original.PostName,
     };
 
     await db.updateData('posts', updated);
@@ -149,6 +199,13 @@ const RemediationDashboard = () => {
                 <div>
                   <div className="remediation-title">{issue.title}</div>
                   <div className="remediation-meta">/{issue.slug || 'no-slug'} * {issue.severity}</div>
+                  <div className="remediation-tags">
+                    {issue.missingTitle && <span>Missing title</span>}
+                    {issue.missingSlug && <span>Missing slug</span>}
+                    {issue.duplicateSlug && <span>Duplicate slug</span>}
+                    {issue.missingDescription && <span>Missing meta desc</span>}
+                    {issue.shortContent && <span>Short content</span>}
+                  </div>
                 </div>
                 <div className="remediation-actions">
                   <button
@@ -197,6 +254,11 @@ const RemediationDashboard = () => {
                           }
                         />
                       </label>
+                    )}
+                    {issue.shortContent && (
+                      <button className="btn-secondary" onClick={() => navigate(`/posts/${issue.postId}`)}>
+                        Open Editor
+                      </button>
                     )}
                     <div className="remediation-panel-actions">
                       <button className="btn-secondary" onClick={() => generateFix(issue)}>

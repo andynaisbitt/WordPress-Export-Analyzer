@@ -9,6 +9,7 @@ import { Attachment } from '../../core/domain/types/Attachment';
 import { PostMeta } from '../../core/domain/types/PostMeta';
 import { buildContentQaReport } from '../../analysis/contentQaV2';
 import { buildMediaManifestCsv, buildMediaZip } from '../../export/v2/mediaExportV2';
+import { buildMediaManifest } from '../../analysis/manifest/mediaManifestV2';
 import { buildAssetLaundromatZip } from '../../export/v2/assetLaundromatV2';
 
 const ExportWizardScreenV2 = () => {
@@ -58,6 +59,19 @@ const ExportWizardScreenV2 = () => {
       qa,
     });
   }, [data, defaultAuthorId, preserveCanonical]);
+
+  const mediaAudit = useMemo(() => {
+    if (!data) return null;
+    const manifest = buildMediaManifest(data.posts, data.attachments);
+    const matched = manifest.filter((row) => row.status === 'matched').length;
+    const missing = manifest.filter((row) => row.status === 'missing').length;
+    return {
+      total: manifest.length,
+      matched,
+      missing,
+      attachments: data.attachments.length,
+    };
+  }, [data]);
 
   const downloadPack = () => {
     if (!pack) return;
@@ -391,6 +405,12 @@ const ExportWizardScreenV2 = () => {
           <p className="export-note">
             Rename media files to SEO-friendly names, update Markdown references, and download an updated BlogCMS pack with a clean media folder.
           </p>
+          <div className="export-stats">
+            <span>Manifest items: {mediaAudit?.total ?? 0}</span>
+            <span>Matched: {mediaAudit?.matched ?? 0}</span>
+            <span>Missing: {mediaAudit?.missing ?? 0}</span>
+            <span>Attachments: {mediaAudit?.attachments ?? 0}</span>
+          </div>
           <div className="export-actions">
             <button className="btn-secondary" onClick={downloadCleanAssetZip} disabled={!data || !pack || assetLoading}>
               {assetLoading ? 'Preparing clean ZIP...' : 'Download Clean Media ZIP'}

@@ -837,6 +837,21 @@ input[type="text"] {
   color: var(--ink-muted);
 }
 
+.remediation-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.remediation-tags span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f0e6d8;
+}
+
 .remediation-panel {
   margin: 10px 0 0;
   padding: 12px;
@@ -883,6 +898,19 @@ input[type="text"] {
 .graph-preview {
   display: grid;
   gap: 12px;
+}
+
+.graph-canvas {
+  display: grid;
+  gap: 12px;
+}
+
+.graph-frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 8px;
+  overflow: hidden;
 }
 
 .graph-grid {
