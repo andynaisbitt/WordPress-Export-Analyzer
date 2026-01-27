@@ -56,36 +56,61 @@ const Dashboard: React.FC = () => {
   const siteTitle = siteInfo.find(info => info.Key === 'title')?.Value || 'N/A';
   const siteDescription = siteInfo.find(info => info.Key === 'description')?.Value || 'N/A';
 
+  const totalContent = postCount + pageCount;
+  const hasImport = totalContent > 0;
+
   return (
     <div className="dashboard-container">
-      <h2>Dashboard</h2>
-      <div className="site-info">
-        <h3>Site Information</h3>
-        <p><strong>Title:</strong> {siteTitle}</p>
-        <p><strong>Description:</strong> {siteDescription}</p>
-      </div>
-      <div className="stats-grid">
+      <section className="dashboard-hero">
+        <div>
+          <p className="dashboard-kicker">Site Snapshot</p>
+          <h2>{siteTitle}</h2>
+          <p className="dashboard-subtitle">{siteDescription}</p>
+        </div>
+        <div className="dashboard-hero-card">
+          <h4>Import Status</h4>
+          <p className={`status-pill ${hasImport ? 'status-live' : 'status-idle'}`}>
+            {hasImport ? 'Content loaded' : 'Waiting for XML import'}
+          </p>
+          <div className="status-meta">
+            <span>Posts: {postCount}</span>
+            <span>Pages: {pageCount}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="dashboard-grid">
+        <div className="stat-card large">
+          <h4>Total Content</h4>
+          <p>{totalContent}</p>
+          <span>Posts + pages</span>
+        </div>
         <div className="stat-card">
-          <h4>Total Posts</h4>
+          <h4>Posts</h4>
           <p>{postCount}</p>
+          <span>Blog entries</span>
         </div>
         <div className="stat-card">
-          <h4>Total Pages</h4>
+          <h4>Pages</h4>
           <p>{pageCount}</p>
+          <span>Static pages</span>
         </div>
         <div className="stat-card">
-          <h4>Total Categories</h4>
+          <h4>Categories</h4>
           <p>{categoryCount}</p>
+          <span>Taxonomy groups</span>
         </div>
         <div className="stat-card">
-          <h4>Total Tags</h4>
+          <h4>Tags</h4>
           <p>{tagCount}</p>
+          <span>Topic labels</span>
         </div>
         <div className="stat-card">
-          <h4>Total Authors</h4>
+          <h4>Authors</h4>
           <p>{authorCount}</p>
+          <span>Contributors</span>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

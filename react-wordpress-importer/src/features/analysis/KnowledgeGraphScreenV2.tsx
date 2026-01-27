@@ -36,6 +36,15 @@ const KnowledgeGraphScreenV2 = () => {
 
   const graphData = useMemo<GraphData>(() => buildGraphData(posts, links), [posts, links]);
 
+  const topCategory = useMemo(() => {
+    const counts = new Map<string, number>();
+    graphData.nodes.forEach((node) => {
+      counts.set(node.group, (counts.get(node.group) || 0) + 1);
+    });
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    return sorted[0]?.[0] || 'n/a';
+  }, [graphData.nodes]);
+
   const downloadGraphJson = () => {
     const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -51,15 +60,6 @@ const KnowledgeGraphScreenV2 = () => {
   if (loading) {
     return <div>Building knowledge graph...</div>;
   }
-
-  const topCategory = useMemo(() => {
-    const counts = new Map<string, number>();
-    graphData.nodes.forEach((node) => {
-      counts.set(node.group, (counts.get(node.group) || 0) + 1);
-    });
-    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-    return sorted[0]?.[0] || 'n/a';
-  }, [graphData.nodes]);
 
   return (
     <div className="knowledge-graph">

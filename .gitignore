@@ -12,6 +12,12 @@
 # Exported data
 *.csv
 *.json
+!package.json
+!package-lock.json
+!**/package.json
+!**/package-lock.json
+!**/tsconfig.json
+!**/tsconfig.node.json
 
 # Uploads
 uploads/
