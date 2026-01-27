@@ -1,0 +1,116 @@
+// react-wordpress-importer/src/components/InternalLinksView.tsx
+
+import React, { useEffect, useState, useMemo } from 'react';
+import { IndexedDbService } from '../../data/services/IndexedDbService';
+import { InternalLink } from '../../core/domain/types/InternalLink';
+
+const InternalLinksView: React.FC = () => {
+  const [allInternalLinks, setAllInternalLinks] = useState<InternalLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    const fetchInternalLinks = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const dbService = new IndexedDbService();
+        await dbService.openDatabase();
+        const fetchedInternalLinks = await dbService.getInternalLinks();
+        setAllInternalLinks(fetchedInternalLinks);
+      } catch (err) {
+        console.error("Error fetching internal links:", err);
+        setError("Failed to load internal links.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInternalLinks();
+  }, []);
+
+  const filteredInternalLinks = useMemo(() => {
+    if (!searchTerm) {
+      return allInternalLinks;
+    }
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return allInternalLinks.filter(link =>
+      link.AnchorText.toLowerCase().includes(lowerCaseSearchTerm) ||
+      link.SourcePostTitle.toLowerCase().includes(lowerCaseSearchTerm) ||
+      link.TargetPostTitle.toLowerCase().includes(lowerCaseSearchTerm) ||
+      link.TargetPostStatus.toLowerCase().includes(lowerCaseSearchTerm) ||
+      link.SourcePostId.toString().includes(lowerCaseSearchTerm) ||
+      link.TargetPostId.toString().includes(lowerCaseSearchTerm)
+    );
+  }, [allInternalLinks, searchTerm]);
+
+  const displayLinks = useMemo(() => {
+    if (showAll || filteredInternalLinks.length <= 300) {
+      return filteredInternalLinks;
+    }
+    return filteredInternalLinks.slice(0, 300);
+  }, [filteredInternalLinks, showAll]);
+
+  if (loading) {
+    return <p>Loading internal links...</p>;
+  }
+
+  if (error) {
+    return <p style={{ color: 'red' }}>Error: {error}</p>;
+  }
+
+  return (
+    <div className="internal-links-view-container">
+      <h2>Internal Links ({filteredInternalLinks.length} / {allInternalLinks.length})</h2>
+      <input
+        type="text"
+        placeholder="Search internal links..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
+      />
+      {filteredInternalLinks.length > 300 && (
+        <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
+          Showing {displayLinks.length} of {filteredInternalLinks.length}. Rendering too many rows can be slow.
+          <button className="btn-secondary" onClick={() => setShowAll((prev) => !prev)} style={{ marginLeft: '12px' }}>
+            {showAll ? 'Show less' : 'Load all'}
+          </button>
+        </div>
+      )}
+      {filteredInternalLinks.length === 0 && !loading && !error ? (
+        <p>No internal links found matching your search criteria.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Source Post ID</th>
+              <th>Target Post ID</th>
+              <th>Anchor Text</th>
+              <th>Source Post Title</th>
+              <th>Target Post Title</th>
+              <th>Target Post Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayLinks.map(link => (
+              <tr key={link.Id}>
+                <td>{link.Id}</td>
+                <td>{link.SourcePostId}</td>
+                <td>{link.TargetPostId}</td>
+                <td>{link.AnchorText || 'N/A'}</td>
+                <td>{link.SourcePostTitle || 'N/A'}</td>
+                <td>{link.TargetPostTitle || 'N/A'}</td>
+                <td>{link.TargetPostStatus || 'N/A'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+};
+
+export default InternalLinksView;
