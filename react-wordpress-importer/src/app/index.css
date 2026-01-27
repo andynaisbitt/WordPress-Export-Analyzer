@@ -711,6 +711,12 @@ input[type="text"] {
   margin-top: 0;
 }
 
+.dashboard-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .seo-audit {
   display: grid;
   gap: 16px;
