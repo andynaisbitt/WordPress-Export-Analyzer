@@ -15,6 +15,7 @@ import InternalLinksScreenV2 from '../features/internallinks/InternalLinksScreen
 import MediaManifestScreenV2 from '../features/mediaManifest/MediaManifestScreenV2';
 import CleanupToolsScreenV2 from '../features/cleanup/CleanupToolsScreenV2';
 import ExportWizardScreenV2 from '../features/export/ExportWizardScreenV2';
+import ContentQaScreenV2 from '../features/analysis/ContentQaScreenV2';
 
 const router = createBrowserRouter([
   {
@@ -80,6 +81,10 @@ const router = createBrowserRouter([
       {
         path: 'export',
         element: <ExportWizardScreenV2 />,
+      },
+      {
+        path: 'content-qa',
+        element: <ContentQaScreenV2 />,
       },
     ],
   },

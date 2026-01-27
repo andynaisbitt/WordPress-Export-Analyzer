@@ -29,6 +29,8 @@ const navLinks = [
 
   { path: '/cleanup', label: 'Cleanup' },
 
+  { path: '/content-qa', label: 'Content QA' },
+
   { path: '/export', label: 'Export' },
 
 ];

@@ -649,3 +649,34 @@ input[type="text"] {
   gap: 8px;
   font-size: 0.85rem;
 }
+
+.qa-screen {
+  display: grid;
+  gap: 16px;
+}
+
+.qa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.qa-summary {
+  display: flex;
+  gap: 16px;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  flex-wrap: wrap;
+}
+
+.qa-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qa-active {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}

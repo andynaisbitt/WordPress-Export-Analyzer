@@ -18,6 +18,7 @@ const AppLayout = () => {
     '/internal-links': 'Internal Links',
     '/media-manifest': 'Media Manifest',
     '/cleanup': 'Cleanup',
+    '/content-qa': 'Content QA',
     '/export': 'Export',
   };
   const pageTitle =
