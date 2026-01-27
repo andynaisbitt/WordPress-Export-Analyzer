@@ -128,6 +128,19 @@ a:hover {
   margin-top: 6px;
 }
 
+.nav-sections {
+  display: grid;
+  gap: 14px;
+}
+
+.nav-section-title {
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: rgba(233, 242, 244, 0.5);
+  margin: 6px 0 8px;
+}
+
 .nav-list {
   list-style: none;
   margin: 0;
@@ -149,6 +162,7 @@ a:hover {
   border-radius: var(--radius-md);
   color: rgba(233, 242, 244, 0.8);
   overflow: hidden;
+  gap: 10px;
 }
 
 .nav-link:hover {
@@ -172,6 +186,19 @@ a:hover {
   position: relative;
   z-index: 1;
   font-weight: 500;
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-main {
@@ -1729,8 +1756,7 @@ body[data-theme="dark"] .page-title {
   }
 
   .nav-list {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
   }
 
   .nav-link {
@@ -1748,6 +1774,27 @@ body[data-theme="dark"] .page-title {
   .dashboard-hero {
     grid-template-columns: 1fr;
   }
+}
+
+.app-shell.sidebar-collapsed .app-sidebar {
+  width: 88px;
+}
+
+.app-shell.sidebar-collapsed .nav-label,
+.app-shell.sidebar-collapsed .brand-title,
+.app-shell.sidebar-collapsed .brand-subtitle,
+.app-shell.sidebar-collapsed .brand-eyebrow,
+.app-shell.sidebar-collapsed .sidebar-footer,
+.app-shell.sidebar-collapsed .sidebar-actions {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .nav-section-title {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .nav-link {
+  justify-content: center;
 }
 
 @media (max-width: 640px) {
