@@ -47,6 +47,12 @@ const InternalLinksView: React.FC = () => {
     fetchInternalLinks();
   }, []);
 
+  useEffect(() => {
+    if (allInternalLinks.length === 0) {
+      void scanLinks();
+    }
+  }, [allInternalLinks.length]);
+
   const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
 
   const updateSiteUrl = async (value: string) => {
@@ -84,6 +90,23 @@ const InternalLinksView: React.FC = () => {
     } catch (err) {
       console.error('Error rebuilding links:', err);
       setError('Failed to rebuild links.');
+    } finally {
+      setRebuilding(false);
+    }
+  };
+
+  const scanLinks = async () => {
+    setRebuilding(true);
+    try {
+      const dbService = new IndexedDbService();
+      await dbService.openDatabase();
+      const posts = await dbService.getPosts();
+      const siteInfo = await dbService.getSiteInfo();
+      const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
+      const linkData = buildInternalAndExternalLinks(posts, siteUrl);
+      if ('stats' in linkData) {
+        setRebuildStats(linkData.stats);
+      }
     } finally {
       setRebuilding(false);
     }
@@ -167,6 +190,9 @@ const InternalLinksView: React.FC = () => {
       <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <button className="btn-secondary" onClick={rebuildLinks} disabled={rebuilding}>
           {rebuilding ? 'Rebuilding...' : 'Rebuild Links'}
+        </button>
+        <button className="btn-secondary" onClick={scanLinks} disabled={rebuilding}>
+          {rebuilding ? 'Scanning...' : 'Scan Content'}
         </button>
         <button className="btn-secondary" onClick={downloadCsv}>
           Export CSV

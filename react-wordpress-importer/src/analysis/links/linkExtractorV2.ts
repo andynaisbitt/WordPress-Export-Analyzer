@@ -50,12 +50,21 @@ const normalizeUrl = (url: string) => {
   return url.replace(/#.*$/, '').trim();
 };
 
+const isRelativeLink = (url: string) => {
+  if (!url) return false;
+  if (url.startsWith('#')) return false;
+  if (url.startsWith('mailto:') || url.startsWith('tel:') || url.startsWith('javascript:')) return false;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return false;
+  return true;
+};
+
 const isInternalUrl = (url: string, siteUrl: string) => {
   if (url.startsWith('/')) return true;
+  if (isRelativeLink(url)) return true;
   if (!siteUrl) return false;
   try {
     const base = new URL(siteUrl);
-    const target = new URL(url);
+    const target = url.startsWith('//') ? new URL(`https:${url}`) : new URL(url);
     return base.hostname === target.hostname;
   } catch {
     return false;
@@ -65,7 +74,7 @@ const isInternalUrl = (url: string, siteUrl: string) => {
 const findTargetPost = (url: string, posts: Post[]) => {
   const cleanUrl = normalizeUrl(url);
   if (!cleanUrl) return undefined;
-  const path = cleanUrl.replace(/^https?:\/\/[^/]+/i, '').replace(/\/$/, '');
+  const path = cleanUrl.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/\//, '').replace(/\/$/, '');
   const segments = path.split('?')[0].split('/').filter(Boolean);
   const slugCandidates = new Set(segments);
   if (segments.length > 0) {
@@ -76,7 +85,9 @@ const findTargetPost = (url: string, posts: Post[]) => {
   if (bySlug) return bySlug;
 
   try {
-    const parsed = new URL(cleanUrl, 'http://placeholder.local');
+    const parsed = cleanUrl.startsWith('//')
+      ? new URL(`https:${cleanUrl}`)
+      : new URL(cleanUrl, 'http://placeholder.local');
     const params = parsed.searchParams;
     const idParam = params.get('p') || params.get('page_id') || params.get('post') || params.get('post_id');
     if (idParam) {
