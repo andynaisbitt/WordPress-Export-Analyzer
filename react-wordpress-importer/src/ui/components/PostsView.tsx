@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { Post } from '../../core/domain/types/Post';
 import { useNavigate } from 'react-router-dom';
+import { buildContentQaReport } from '../../analysis/contentQaV2';
 
 interface PostsViewProps {
   postType?: 'post' | 'page';
@@ -108,6 +109,15 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
     return Array.from(unique);
   }, [allPosts]);
 
+  const qaReport = useMemo(() => buildContentQaReport(allPosts), [allPosts]);
+  const qaByPostId = useMemo(() => {
+    const map = new Map<number, { severity: string; issues: number }>();
+    qaReport.issues.forEach((issue) => {
+      map.set(issue.postId, { severity: issue.severity, issues: issue.issues.length });
+    });
+    return map;
+  }, [qaReport.issues]);
+
 
   if (loading) {
     return <p>Loading posts...</p>;
@@ -120,6 +130,12 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
   return (
     <div className="posts-view-container">
       <h2>{title ?? (postType === 'page' ? 'Pages' : 'Posts')} ({filteredByMeta.length} / {allPosts.length})</h2>
+      <div className="qa-summary">
+        <span>QA flagged: {qaReport.summary.flaggedPosts}</span>
+        <span>High: {qaReport.summary.high}</span>
+        <span>Medium: {qaReport.summary.medium}</span>
+        <span>Low: {qaReport.summary.low}</span>
+      </div>
       <input
         type="text"
         placeholder={`Search ${postType === 'page' ? 'pages' : 'posts'}...`}
@@ -169,27 +185,38 @@ const PostsView: React.FC<PostsViewProps> = ({ postType = 'post', title }) => {
               <th>Status</th>
               <th>Date</th>
               <th>Author</th>
+              <th>QA</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {pagedPosts.map(post => (
-              <tr key={post.PostId}>
-                <td>{post.PostId}</td>
-                <td>{post.Title}</td>
-                <td>{post.Status}</td>
-                <td>{post.PostDate ? new Date(post.PostDate).toLocaleDateString() : 'N/A'}</td>
-                <td>{post.Creator}</td>
-                <td>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => navigate(`/posts/${post.PostId}`, { state: { backTo: postType === 'page' ? '/pages' : '/posts' } })}
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {pagedPosts.map(post => {
+              const qa = qaByPostId.get(post.PostId);
+              return (
+                <tr key={post.PostId}>
+                  <td>{post.PostId}</td>
+                  <td>{post.Title}</td>
+                  <td>{post.Status}</td>
+                  <td>{post.PostDate ? new Date(post.PostDate).toLocaleDateString() : 'N/A'}</td>
+                  <td>{post.Creator}</td>
+                  <td>
+                    {qa ? (
+                      <span className={`qa-pill qa-${qa.severity}`}>{qa.severity} ({qa.issues})</span>
+                    ) : (
+                      <span className="qa-pill qa-clean">clean</span>
+                    )}
+                  </td>
+                  <td>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigate(`/posts/${post.PostId}`, { state: { backTo: postType === 'page' ? '/pages' : '/posts' } })}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

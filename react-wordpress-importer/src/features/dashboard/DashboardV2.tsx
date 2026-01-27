@@ -94,6 +94,23 @@ const DashboardV2 = () => {
     return Math.round(score);
   }, [seoIssueRows, qaReport.summary, linkInsights.orphanPosts.length]);
 
+  const seoDistribution = useMemo(() => ([
+    { label: 'Missing title', value: seoReport.summary.missingTitle },
+    { label: 'Missing desc', value: seoReport.summary.missingDescription },
+    { label: 'Missing canonical', value: seoReport.summary.missingCanonical },
+    { label: 'Missing OG image', value: seoReport.summary.missingOpenGraphImage },
+    { label: 'No schema', value: seoReport.summary.schemaMissing },
+  ]), [seoReport.summary]);
+
+  const qaDistribution = useMemo(() => ([
+    { label: 'High', value: qaReport.summary.high },
+    { label: 'Medium', value: qaReport.summary.medium },
+    { label: 'Low', value: qaReport.summary.low },
+  ]), [qaReport.summary]);
+
+  const maxSeoValue = Math.max(1, ...seoDistribution.map((item) => item.value));
+  const maxQaValue = Math.max(1, ...qaDistribution.map((item) => item.value));
+
   const siteTitle = siteInfo.find((info) => info.Key === 'title')?.Value || 'Untitled site';
   const siteDescription = siteInfo.find((info) => info.Key === 'description')?.Value || 'No description';
   const totalPosts = posts.filter((post) => post.PostType === 'post').length;
@@ -253,6 +270,55 @@ const DashboardV2 = () => {
             <div className="panel-metric">
               <span>Avg outbound</span>
               <strong>{linkInsights.avgOutbound.toFixed(1)}</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <h3>Analytics</h3>
+        <div className="dashboard-panels">
+          <div className="panel-card">
+            <h4>SEO Issue Distribution</h4>
+            <div className="bar-chart">
+              {seoDistribution.map((item) => (
+                <div key={item.label} className="bar-row">
+                  <span>{item.label}</span>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${(item.value / maxSeoValue) * 100}%` }} />
+                  </div>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="panel-card">
+            <h4>Content QA Severity</h4>
+            <div className="bar-chart">
+              {qaDistribution.map((item) => (
+                <div key={item.label} className="bar-row">
+                  <span>{item.label}</span>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${(item.value / maxQaValue) * 100}%` }} />
+                  </div>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="panel-card">
+            <h4>Link Concentration</h4>
+            <div className="panel-metric">
+              <span>Top inbound</span>
+              <strong>{linkInsights.topInbound[0]?.inbound ?? 0}</strong>
+            </div>
+            <div className="panel-metric">
+              <span>Top outbound</span>
+              <strong>{linkInsights.topOutbound[0]?.outbound ?? 0}</strong>
+            </div>
+            <div className="panel-metric">
+              <span>Orphan rate</span>
+              <strong>{posts.length ? `${Math.round((linkInsights.orphanPosts.length / posts.length) * 100)}%` : '0%'}</strong>
             </div>
           </div>
         </div>
