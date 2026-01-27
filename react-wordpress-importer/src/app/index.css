@@ -1546,6 +1546,17 @@ body[data-theme="dark"] .status-pill.status-idle {
   color: #f1b27a;
 }
 
+body[data-theme="dark"] .app-shell,
+body[data-theme="dark"] #root,
+body[data-theme="dark"] .app-main {
+  background: radial-gradient(circle at top left, #151a1d 0%, #111516 60%, #0e1112 100%);
+}
+
+body[data-theme="dark"] .page-kicker,
+body[data-theme="dark"] .page-title {
+  color: var(--ink);
+}
+
 .graph-insights {
   display: grid;
   gap: 12px;
