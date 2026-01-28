@@ -58,8 +58,8 @@ body[data-theme="dark"]::before {
 }
 
 h1, h2, h3 {
-  font-family: "Fraunces", "Georgia", serif;
-  letter-spacing: -0.02em;
+  font-family: inherit;
+  letter-spacing: -0.01em;
 }
 
 a {
