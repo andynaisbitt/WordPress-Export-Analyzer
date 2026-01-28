@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { ExternalLink } from '../../core/domain/types/ExternalLink';
 import { SiteInfo } from '../../core/domain/types/SiteInfo';
@@ -17,6 +18,15 @@ const ExternalLinksView: React.FC = () => {
   const [filterSourceId, setFilterSourceId] = useState('');
   const [filterDomain, setFilterDomain] = useState('');
   const [filterMissingAnchor, setFilterMissingAnchor] = useState(false);
+  const [copiedRow, setCopiedRow] = useState<string | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState({
+    id: true,
+    sourceId: true,
+    sourceTitle: true,
+    anchor: true,
+    url: true,
+    actions: true,
+  });
   const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
   const [rebuildStats, setRebuildStats] = useState<{
     postsScanned: number;
@@ -30,6 +40,7 @@ const ExternalLinksView: React.FC = () => {
   } | null>(null);
   const [computedLinks, setComputedLinks] = useState<ExternalLink[]>([]);
   const [page, setPage] = useState(1);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -106,6 +117,17 @@ const ExternalLinksView: React.FC = () => {
     }
   };
 
+  const handleCopy = async (value: string, rowKey: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedRow(rowKey);
+      window.setTimeout(() => setCopiedRow((current) => (current === rowKey ? null : current)), 1500);
+    } catch (err) {
+      console.error('Failed to copy link', err);
+    }
+  };
+
   const resetFilters = () => {
     setSearchTerm('');
     setFilterSourceId('');
@@ -118,15 +140,27 @@ const ExternalLinksView: React.FC = () => {
     setPage(1);
   };
 
+  const applyMissingAnchorsPreset = () => {
+    setFilterMissingAnchor(true);
+    setFilterDomain('');
+    setFilterSourceId('');
+    setSortKey('anchor');
+    setSortDir('asc');
+    setShowAll(false);
+    setPage(1);
+  };
+
   const downloadCsv = () => {
-    const headers = ['id', 'source_post_id', 'source_title', 'anchor_text', 'url'];
-    const rows = filtered.map((link, idx) => [
-      link.Id ?? idx + 1,
-      link.SourcePostId,
-      link.SourcePostTitle,
-      link.AnchorText,
-      link.Url,
-    ]);
+    const columnDefs = [
+      { key: 'id', label: 'id', value: (link: ExternalLink, idx: number) => link.Id ?? idx + 1 },
+      { key: 'sourceId', label: 'source_post_id', value: (link: ExternalLink) => link.SourcePostId },
+      { key: 'sourceTitle', label: 'source_title', value: (link: ExternalLink) => link.SourcePostTitle },
+      { key: 'anchor', label: 'anchor_text', value: (link: ExternalLink) => link.AnchorText },
+      { key: 'url', label: 'url', value: (link: ExternalLink) => link.Url },
+    ];
+    const activeColumns = columnDefs.filter((col) => visibleColumns[col.key as keyof typeof visibleColumns]);
+    const headers = activeColumns.map((col) => col.label);
+    const rows = sortedLinks.map((link, idx) => activeColumns.map((col) => col.value(link, idx)));
     const csv = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -285,9 +319,25 @@ const ExternalLinksView: React.FC = () => {
           </label>
         </div>
         <div className="link-controls-actions">
+          <button className="btn-secondary" onClick={applyMissingAnchorsPreset}>
+            QA: Missing anchors
+          </button>
           <button className="btn-secondary" onClick={resetFilters}>
             Reset filters
           </button>
+        </div>
+        <div className="link-columns">
+          <span>Columns</span>
+          {Object.entries(visibleColumns).map(([key, value]) => (
+            <label key={key} className="link-column">
+              <input
+                type="checkbox"
+                checked={value}
+                onChange={() => setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}
+              />
+              {key}
+            </label>
+          ))}
         </div>
       </div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
@@ -298,7 +348,7 @@ const ExternalLinksView: React.FC = () => {
           {rebuilding ? 'Scanning...' : 'Scan Content'}
         </button>
         <button className="btn-secondary" onClick={downloadCsv}>
-          Export CSV
+          Export filtered CSV
         </button>
       </div>
       {rebuildStats && (
@@ -370,19 +420,37 @@ const ExternalLinksView: React.FC = () => {
           <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Source Post</th>
-              <th>Anchor Text</th>
-              <th>URL</th>
+              {visibleColumns.id && <th>ID</th>}
+              {visibleColumns.sourceId && <th>Source Post ID</th>}
+              {visibleColumns.sourceTitle && <th>Source Post</th>}
+              {visibleColumns.anchor && <th>Anchor Text</th>}
+              {visibleColumns.url && <th>URL</th>}
+              {visibleColumns.actions && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {displayLinks.map((link, idx) => (
               <tr key={link.Id ?? `${link.SourcePostId}-${link.Url}-${idx}`}>
-                <td>{link.Id ?? idx + 1}</td>
-                <td>{link.SourcePostTitle}</td>
-                <td>{link.AnchorText || 'N/A'}</td>
-                <td>{link.Url}</td>
+                {visibleColumns.id && <td>{link.Id ?? idx + 1}</td>}
+                {visibleColumns.sourceId && <td>{link.SourcePostId}</td>}
+                {visibleColumns.sourceTitle && <td>{link.SourcePostTitle}</td>}
+                {visibleColumns.anchor && <td>{link.AnchorText || 'N/A'}</td>}
+                {visibleColumns.url && <td>{link.Url}</td>}
+                {visibleColumns.actions && (
+                  <td>
+                    <div className="row-actions">
+                      <button className="btn-secondary btn-mini" onClick={() => navigate(`/posts/${link.SourcePostId}`)}>
+                        Open source
+                      </button>
+                      <button
+                        className="btn-secondary btn-mini"
+                        onClick={() => handleCopy(link.Url, `${link.SourcePostId}-${idx}-copy`)}
+                      >
+                        {copiedRow === `${link.SourcePostId}-${idx}-copy` ? 'Copied' : 'Copy URL'}
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

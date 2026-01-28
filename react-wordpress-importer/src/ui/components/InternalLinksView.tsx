@@ -1,6 +1,7 @@
 // react-wordpress-importer/src/components/InternalLinksView.tsx
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { InternalLink } from '../../core/domain/types/InternalLink';
 import { SiteInfo } from '../../core/domain/types/SiteInfo';
@@ -21,6 +22,17 @@ const InternalLinksView: React.FC = () => {
   const [filterTargetId, setFilterTargetId] = useState('');
   const [filterMissingAnchor, setFilterMissingAnchor] = useState(false);
   const [filterMissingTarget, setFilterMissingTarget] = useState(false);
+  const [copiedRow, setCopiedRow] = useState<string | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState({
+    id: true,
+    sourceId: true,
+    targetId: true,
+    anchor: true,
+    sourceTitle: true,
+    targetTitle: true,
+    targetStatus: true,
+    actions: true,
+  });
   const [rebuilding, setRebuilding] = useState(false);
   const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
   const [rebuildStats, setRebuildStats] = useState<{
@@ -34,6 +46,7 @@ const InternalLinksView: React.FC = () => {
     siteUrl: string;
   } | null>(null);
   const [computedLinks, setComputedLinks] = useState<InternalLink[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchInternalLinks = async () => {
@@ -98,6 +111,25 @@ const InternalLinksView: React.FC = () => {
     }
   };
 
+  const buildTargetUrl = (slug?: string) => {
+    if (!slug) return '';
+    const trimmedSlug = slug.replace(/^\/+/, '');
+    const base = siteUrl?.trim();
+    if (!base) return `/${trimmedSlug}`;
+    return `${base.replace(/\/+$/, '')}/${trimmedSlug}`;
+  };
+
+  const handleCopy = async (value: string, rowKey: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedRow(rowKey);
+      window.setTimeout(() => setCopiedRow((current) => (current === rowKey ? null : current)), 1500);
+    } catch (err) {
+      console.error('Failed to copy link', err);
+    }
+  };
+
   const resetFilters = () => {
     setSearchTerm('');
     setFilterStatus('all');
@@ -108,6 +140,30 @@ const InternalLinksView: React.FC = () => {
     setSortKey('sourceTitle');
     setSortDir('asc');
     setPageSize(200);
+    setShowAll(false);
+    setPage(1);
+  };
+
+  const applyMissingAnchorsPreset = () => {
+    setFilterMissingAnchor(true);
+    setFilterMissingTarget(false);
+    setFilterStatus('all');
+    setFilterSourceId('');
+    setFilterTargetId('');
+    setSortKey('anchor');
+    setSortDir('asc');
+    setShowAll(false);
+    setPage(1);
+  };
+
+  const applyDraftTargetsPreset = () => {
+    setFilterStatus('draft');
+    setFilterMissingAnchor(false);
+    setFilterMissingTarget(false);
+    setFilterSourceId('');
+    setFilterTargetId('');
+    setSortKey('targetStatus');
+    setSortDir('asc');
     setShowAll(false);
     setPage(1);
   };
@@ -125,17 +181,19 @@ const InternalLinksView: React.FC = () => {
   };
 
   const downloadCsv = () => {
-    const headers = ['id', 'source_post_id', 'target_post_id', 'anchor_text', 'source_title', 'target_title', 'target_slug', 'target_status'];
-    const rows = filteredInternalLinks.map((link, idx) => [
-      link.Id ?? idx + 1,
-      link.SourcePostId,
-      link.TargetPostId,
-      link.AnchorText,
-      link.SourcePostTitle,
-      link.TargetPostTitle,
-      link.TargetPostName,
-      link.TargetPostStatus,
-    ]);
+    const columnDefs = [
+      { key: 'id', label: 'id', value: (link: InternalLink, idx: number) => link.Id ?? idx + 1 },
+      { key: 'sourceId', label: 'source_post_id', value: (link: InternalLink) => link.SourcePostId },
+      { key: 'targetId', label: 'target_post_id', value: (link: InternalLink) => link.TargetPostId },
+      { key: 'anchor', label: 'anchor_text', value: (link: InternalLink) => link.AnchorText },
+      { key: 'sourceTitle', label: 'source_title', value: (link: InternalLink) => link.SourcePostTitle },
+      { key: 'targetTitle', label: 'target_title', value: (link: InternalLink) => link.TargetPostTitle },
+      { key: 'targetSlug', label: 'target_slug', value: (link: InternalLink) => link.TargetPostName },
+      { key: 'targetStatus', label: 'target_status', value: (link: InternalLink) => link.TargetPostStatus },
+    ];
+    const activeColumns = columnDefs.filter((col) => visibleColumns[col.key as keyof typeof visibleColumns]);
+    const headers = activeColumns.map((col) => col.label);
+    const rows = sortedLinks.map((link, idx) => activeColumns.map((col) => col.value(link, idx)));
     const csv = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -332,9 +390,28 @@ const InternalLinksView: React.FC = () => {
           </label>
         </div>
         <div className="link-controls-actions">
+          <button className="btn-secondary" onClick={applyMissingAnchorsPreset}>
+            QA: Missing anchors
+          </button>
+          <button className="btn-secondary" onClick={applyDraftTargetsPreset}>
+            Draft targets
+          </button>
           <button className="btn-secondary" onClick={resetFilters}>
             Reset filters
           </button>
+        </div>
+        <div className="link-columns">
+          <span>Columns</span>
+          {Object.entries(visibleColumns).map(([key, value]) => (
+            <label key={key} className="link-column">
+              <input
+                type="checkbox"
+                checked={value}
+                onChange={() => setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}
+              />
+              {key}
+            </label>
+          ))}
         </div>
       </div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
@@ -345,7 +422,7 @@ const InternalLinksView: React.FC = () => {
           {rebuilding ? 'Scanning...' : 'Scan Content'}
         </button>
         <button className="btn-secondary" onClick={downloadCsv}>
-          Export CSV
+          Export filtered CSV
         </button>
       </div>
       {rebuildStats && (
@@ -418,25 +495,44 @@ const InternalLinksView: React.FC = () => {
           <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Source Post ID</th>
-              <th>Target Post ID</th>
-              <th>Anchor Text</th>
-              <th>Source Post Title</th>
-              <th>Target Post Title</th>
-              <th>Target Post Status</th>
+              {visibleColumns.id && <th>ID</th>}
+              {visibleColumns.sourceId && <th>Source Post ID</th>}
+              {visibleColumns.targetId && <th>Target Post ID</th>}
+              {visibleColumns.anchor && <th>Anchor Text</th>}
+              {visibleColumns.sourceTitle && <th>Source Post Title</th>}
+              {visibleColumns.targetTitle && <th>Target Post Title</th>}
+              {visibleColumns.targetStatus && <th>Target Post Status</th>}
+              {visibleColumns.actions && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {displayLinks.map((link, idx) => (
               <tr key={link.Id ?? `${link.SourcePostId}-${link.TargetPostId}-${idx}`}>
-                <td>{link.Id ?? idx + 1}</td>
-                <td>{link.SourcePostId}</td>
-                <td>{link.TargetPostId}</td>
-                <td>{link.AnchorText || 'N/A'}</td>
-                <td>{link.SourcePostTitle || 'N/A'}</td>
-                <td>{link.TargetPostTitle || 'N/A'}</td>
-                <td>{link.TargetPostStatus || 'N/A'}</td>
+                {visibleColumns.id && <td>{link.Id ?? idx + 1}</td>}
+                {visibleColumns.sourceId && <td>{link.SourcePostId}</td>}
+                {visibleColumns.targetId && <td>{link.TargetPostId}</td>}
+                {visibleColumns.anchor && <td>{link.AnchorText || 'N/A'}</td>}
+                {visibleColumns.sourceTitle && <td>{link.SourcePostTitle || 'N/A'}</td>}
+                {visibleColumns.targetTitle && <td>{link.TargetPostTitle || 'N/A'}</td>}
+                {visibleColumns.targetStatus && <td>{link.TargetPostStatus || 'N/A'}</td>}
+                {visibleColumns.actions && (
+                  <td>
+                    <div className="row-actions">
+                      <button className="btn-secondary btn-mini" onClick={() => navigate(`/posts/${link.SourcePostId}`)}>
+                        Open source
+                      </button>
+                      <button className="btn-secondary btn-mini" onClick={() => navigate(`/posts/${link.TargetPostId}`)}>
+                        Open target
+                      </button>
+                      <button
+                        className="btn-secondary btn-mini"
+                        onClick={() => handleCopy(buildTargetUrl(link.TargetPostName), `${link.SourcePostId}-${link.TargetPostId}-copy`)}
+                      >
+                        {copiedRow === `${link.SourcePostId}-${link.TargetPostId}-copy` ? 'Copied' : 'Copy URL'}
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
