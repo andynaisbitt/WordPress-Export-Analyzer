@@ -1428,6 +1428,70 @@ input[type="text"] {
   flex-wrap: wrap;
 }
 
+.link-controls {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.link-controls > input[type="text"] {
+  max-width: 320px;
+}
+
+.link-filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+}
+
+.link-filter {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.link-filter.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.link-controls-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pagination-bar {
+  margin-bottom: 12px;
+  color: var(--ink-muted);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pagination-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.pagination-input input {
+  width: 80px;
+  padding: 6px 8px;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .sidebar-overlay {
   display: none;
 }

@@ -11,6 +11,12 @@ const ExternalLinksView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
+  const [pageSize, setPageSize] = useState(200);
+  const [sortKey, setSortKey] = useState('url');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [filterSourceId, setFilterSourceId] = useState('');
+  const [filterDomain, setFilterDomain] = useState('');
+  const [filterMissingAnchor, setFilterMissingAnchor] = useState(false);
   const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
   const [rebuildStats, setRebuildStats] = useState<{
     postsScanned: number;
@@ -100,6 +106,18 @@ const ExternalLinksView: React.FC = () => {
     }
   };
 
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterSourceId('');
+    setFilterDomain('');
+    setFilterMissingAnchor(false);
+    setSortKey('url');
+    setSortDir('asc');
+    setPageSize(200);
+    setShowAll(false);
+    setPage(1);
+  };
+
   const downloadCsv = () => {
     const headers = ['id', 'source_post_id', 'source_title', 'anchor_text', 'url'];
     const rows = filtered.map((link, idx) => [
@@ -135,16 +153,54 @@ const ExternalLinksView: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, allLinks.length, computedLinks.length]);
+  }, [searchTerm, allLinks.length, computedLinks.length, filterSourceId, filterDomain, filterMissingAnchor, pageSize]);
 
-  const pageSize = 200;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const normalizedFilters = useMemo(() => {
+    const sourceId = filterSourceId.trim();
+    const domain = filterDomain.trim().toLowerCase();
+    return {
+      sourceId,
+      domain,
+      hasSourceId: sourceId.length > 0,
+      hasDomain: domain.length > 0,
+    };
+  }, [filterSourceId, filterDomain]);
+
+  const filteredWithFacets = useMemo(() => {
+    return filtered.filter((link) => {
+      if (normalizedFilters.hasSourceId && String(link.SourcePostId) !== normalizedFilters.sourceId) return false;
+      if (normalizedFilters.hasDomain && !link.Url.toLowerCase().includes(normalizedFilters.domain)) return false;
+      if (filterMissingAnchor && link.AnchorText?.trim()) return false;
+      return true;
+    });
+  }, [filtered, normalizedFilters, filterMissingAnchor]);
+
+  const sortedLinks = useMemo(() => {
+    const sorted = [...filteredWithFacets];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'sourceId':
+          return (a.SourcePostId - b.SourcePostId) * dir;
+        case 'sourceTitle':
+          return (a.SourcePostTitle || '').localeCompare(b.SourcePostTitle || '') * dir;
+        case 'anchor':
+          return (a.AnchorText || '').localeCompare(b.AnchorText || '') * dir;
+        case 'url':
+        default:
+          return (a.Url || '').localeCompare(b.Url || '') * dir;
+      }
+    });
+    return sorted;
+  }, [filteredWithFacets, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedLinks.length / pageSize));
 
   const displayLinks = useMemo(() => {
-    if (showAll) return filtered;
+    if (showAll) return sortedLinks;
     const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, showAll, page]);
+    return sortedLinks.slice(start, start + pageSize);
+  }, [sortedLinks, showAll, page, pageSize]);
 
   if (loading) {
     return <p>Loading external links...</p>;
@@ -156,7 +212,7 @@ const ExternalLinksView: React.FC = () => {
 
   return (
     <div className="external-links-view-container">
-      <h2>External Links ({filtered.length})</h2>
+      <h2>External Links ({sortedLinks.length})</h2>
       <div className="graph-tools" style={{ marginBottom: '12px' }}>
         <label>
           Site URL
@@ -168,13 +224,72 @@ const ExternalLinksView: React.FC = () => {
           />
         </label>
       </div>
-      <input
-        type="text"
-        placeholder="Search external links..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
-      />
+      <div className="link-controls">
+        <input
+          type="text"
+          placeholder="Search external links..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <div className="link-filters">
+          <label className="link-filter">
+            Source ID
+            <input
+              type="text"
+              placeholder="e.g. 12"
+              value={filterSourceId}
+              onChange={(event) => setFilterSourceId(event.target.value)}
+            />
+          </label>
+          <label className="link-filter">
+            Domain contains
+            <input
+              type="text"
+              placeholder="example.com"
+              value={filterDomain}
+              onChange={(event) => setFilterDomain(event.target.value)}
+            />
+          </label>
+          <label className="link-filter">
+            Sort by
+            <select value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
+              <option value="url">URL</option>
+              <option value="sourceTitle">Source title</option>
+              <option value="sourceId">Source ID</option>
+              <option value="anchor">Anchor text</option>
+            </select>
+          </label>
+          <label className="link-filter">
+            Order
+            <select value={sortDir} onChange={(event) => setSortDir(event.target.value as 'asc' | 'desc')}>
+              <option value="asc">Asc</option>
+              <option value="desc">Desc</option>
+            </select>
+          </label>
+          <label className="link-filter">
+            Page size
+            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+            </select>
+          </label>
+          <label className="link-filter checkbox">
+            <input
+              type="checkbox"
+              checked={filterMissingAnchor}
+              onChange={(event) => setFilterMissingAnchor(event.target.checked)}
+            />
+            Missing anchor
+          </label>
+        </div>
+        <div className="link-controls-actions">
+          <button className="btn-secondary" onClick={resetFilters}>
+            Reset filters
+          </button>
+        </div>
+      </div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <button className="btn-secondary" onClick={rebuildLinks} disabled={rebuilding}>
           {rebuilding ? 'Rebuilding...' : 'Rebuild Links'}
@@ -203,8 +318,8 @@ const ExternalLinksView: React.FC = () => {
           )}
         </div>
       )}
-      {filtered.length > pageSize && !showAll && (
-        <div style={{ marginBottom: '12px', color: '#6a7a83', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      {sortedLinks.length > pageSize && !showAll && (
+        <div className="pagination-bar">
           <span>Page {page} of {totalPages}</span>
           <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
             Prev
@@ -212,25 +327,47 @@ const ExternalLinksView: React.FC = () => {
           <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
             Next
           </button>
+          <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage(1)}>
+            First
+          </button>
+          <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
+            Last
+          </button>
+          <label className="pagination-input">
+            Jump to
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={page}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (!Number.isNaN(value)) {
+                  setPage(Math.min(totalPages, Math.max(1, value)));
+                }
+              }}
+            />
+          </label>
           <button className="btn-secondary" onClick={() => setShowAll(true)}>
             Load all
           </button>
         </div>
       )}
       {showAll && (
-        <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
-          Showing all {filtered.length} rows.
+        <div className="pagination-bar">
+          Showing all {sortedLinks.length} rows.
           <button className="btn-secondary" onClick={() => { setShowAll(false); setPage(1); }} style={{ marginLeft: '12px' }}>
             Paginate
           </button>
         </div>
       )}
-      {filtered.length === 0 ? (
+      {sortedLinks.length === 0 ? (
         <div className="graph-warning">
           No external links found. Check your Site URL and click "Rebuild Links".
         </div>
       ) : (
-        <table>
+        <div className="table-wrap">
+          <table>
           <thead>
             <tr>
               <th>ID</th>
@@ -249,7 +386,8 @@ const ExternalLinksView: React.FC = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
     </div>
   );

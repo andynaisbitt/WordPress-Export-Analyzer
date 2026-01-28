@@ -13,6 +13,14 @@ const InternalLinksView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(200);
+  const [sortKey, setSortKey] = useState('sourceTitle');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterSourceId, setFilterSourceId] = useState('');
+  const [filterTargetId, setFilterTargetId] = useState('');
+  const [filterMissingAnchor, setFilterMissingAnchor] = useState(false);
+  const [filterMissingTarget, setFilterMissingTarget] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
   const [rebuildStats, setRebuildStats] = useState<{
@@ -90,6 +98,20 @@ const InternalLinksView: React.FC = () => {
     }
   };
 
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterStatus('all');
+    setFilterSourceId('');
+    setFilterTargetId('');
+    setFilterMissingAnchor(false);
+    setFilterMissingTarget(false);
+    setSortKey('sourceTitle');
+    setSortDir('asc');
+    setPageSize(200);
+    setShowAll(false);
+    setPage(1);
+  };
+
   const scanLinks = async () => {
     setRebuilding(true);
     try {
@@ -144,16 +166,68 @@ const InternalLinksView: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, allInternalLinks.length, computedLinks.length]);
+  }, [searchTerm, allInternalLinks.length, computedLinks.length, filterStatus, filterSourceId, filterTargetId, filterMissingAnchor, filterMissingTarget, pageSize]);
 
-  const pageSize = 200;
-  const totalPages = Math.max(1, Math.ceil(filteredInternalLinks.length / pageSize));
+  const statusOptions = useMemo(() => {
+    const statuses = new Set<string>();
+    filteredInternalLinks.forEach((link) => {
+      if (link.TargetPostStatus) statuses.add(link.TargetPostStatus);
+    });
+    return ['all', ...Array.from(statuses).sort()];
+  }, [filteredInternalLinks]);
+
+  const normalizedFilters = useMemo(() => {
+    const sourceId = filterSourceId.trim();
+    const targetId = filterTargetId.trim();
+    return {
+      sourceId,
+      targetId,
+      hasSourceId: sourceId.length > 0,
+      hasTargetId: targetId.length > 0,
+    };
+  }, [filterSourceId, filterTargetId]);
+
+  const filteredWithFacets = useMemo(() => {
+    return filteredInternalLinks.filter((link) => {
+      if (filterStatus !== 'all' && link.TargetPostStatus !== filterStatus) return false;
+      if (normalizedFilters.hasSourceId && String(link.SourcePostId) !== normalizedFilters.sourceId) return false;
+      if (normalizedFilters.hasTargetId && String(link.TargetPostId) !== normalizedFilters.targetId) return false;
+      if (filterMissingAnchor && link.AnchorText?.trim()) return false;
+      if (filterMissingTarget && link.TargetPostTitle?.trim()) return false;
+      return true;
+    });
+  }, [filteredInternalLinks, filterStatus, normalizedFilters, filterMissingAnchor, filterMissingTarget]);
+
+  const sortedLinks = useMemo(() => {
+    const sorted = [...filteredWithFacets];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'sourceId':
+          return (a.SourcePostId - b.SourcePostId) * dir;
+        case 'targetId':
+          return (a.TargetPostId - b.TargetPostId) * dir;
+        case 'targetStatus':
+          return a.TargetPostStatus.localeCompare(b.TargetPostStatus) * dir;
+        case 'anchor':
+          return (a.AnchorText || '').localeCompare(b.AnchorText || '') * dir;
+        case 'targetTitle':
+          return (a.TargetPostTitle || '').localeCompare(b.TargetPostTitle || '') * dir;
+        case 'sourceTitle':
+        default:
+          return (a.SourcePostTitle || '').localeCompare(b.SourcePostTitle || '') * dir;
+      }
+    });
+    return sorted;
+  }, [filteredWithFacets, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedLinks.length / pageSize));
 
   const displayLinks = useMemo(() => {
-    if (showAll) return filteredInternalLinks;
+    if (showAll) return sortedLinks;
     const start = (page - 1) * pageSize;
-    return filteredInternalLinks.slice(start, start + pageSize);
-  }, [filteredInternalLinks, showAll, page]);
+    return sortedLinks.slice(start, start + pageSize);
+  }, [sortedLinks, showAll, page, pageSize]);
 
   if (loading) {
     return <p>Loading internal links...</p>;
@@ -165,7 +239,7 @@ const InternalLinksView: React.FC = () => {
 
   return (
     <div className="internal-links-view-container">
-      <h2>Internal Links ({filteredInternalLinks.length} / {allInternalLinks.length})</h2>
+      <h2>Internal Links ({sortedLinks.length} / {allInternalLinks.length})</h2>
       <div className="graph-tools" style={{ marginBottom: '12px' }}>
         <label>
           Site URL
@@ -177,13 +251,92 @@ const InternalLinksView: React.FC = () => {
           />
         </label>
       </div>
-      <input
-        type="text"
-        placeholder="Search internal links..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ marginBottom: '20px', padding: '8px', width: '300px' }}
-      />
+      <div className="link-controls">
+        <input
+          type="text"
+          placeholder="Search internal links..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <div className="link-filters">
+          <label className="link-filter">
+            Status
+            <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status === 'all' ? 'All statuses' : status}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="link-filter">
+            Source ID
+            <input
+              type="text"
+              placeholder="e.g. 12"
+              value={filterSourceId}
+              onChange={(event) => setFilterSourceId(event.target.value)}
+            />
+          </label>
+          <label className="link-filter">
+            Target ID
+            <input
+              type="text"
+              placeholder="e.g. 34"
+              value={filterTargetId}
+              onChange={(event) => setFilterTargetId(event.target.value)}
+            />
+          </label>
+          <label className="link-filter">
+            Sort by
+            <select value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
+              <option value="sourceTitle">Source title</option>
+              <option value="targetTitle">Target title</option>
+              <option value="sourceId">Source ID</option>
+              <option value="targetId">Target ID</option>
+              <option value="targetStatus">Target status</option>
+              <option value="anchor">Anchor text</option>
+            </select>
+          </label>
+          <label className="link-filter">
+            Order
+            <select value={sortDir} onChange={(event) => setSortDir(event.target.value as 'asc' | 'desc')}>
+              <option value="asc">Asc</option>
+              <option value="desc">Desc</option>
+            </select>
+          </label>
+          <label className="link-filter">
+            Page size
+            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+            </select>
+          </label>
+          <label className="link-filter checkbox">
+            <input
+              type="checkbox"
+              checked={filterMissingAnchor}
+              onChange={(event) => setFilterMissingAnchor(event.target.checked)}
+            />
+            Missing anchor
+          </label>
+          <label className="link-filter checkbox">
+            <input
+              type="checkbox"
+              checked={filterMissingTarget}
+              onChange={(event) => setFilterMissingTarget(event.target.checked)}
+            />
+            Missing target
+          </label>
+        </div>
+        <div className="link-controls-actions">
+          <button className="btn-secondary" onClick={resetFilters}>
+            Reset filters
+          </button>
+        </div>
+      </div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <button className="btn-secondary" onClick={rebuildLinks} disabled={rebuilding}>
           {rebuilding ? 'Rebuilding...' : 'Rebuild Links'}
@@ -213,8 +366,8 @@ const InternalLinksView: React.FC = () => {
           )}
         </div>
       )}
-      {filteredInternalLinks.length > pageSize && !showAll && (
-        <div style={{ marginBottom: '12px', color: '#6a7a83', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      {sortedLinks.length > pageSize && !showAll && (
+        <div className="pagination-bar">
           <span>Page {page} of {totalPages}</span>
           <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
             Prev
@@ -222,25 +375,47 @@ const InternalLinksView: React.FC = () => {
           <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
             Next
           </button>
+          <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage(1)}>
+            First
+          </button>
+          <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
+            Last
+          </button>
+          <label className="pagination-input">
+            Jump to
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={page}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (!Number.isNaN(value)) {
+                  setPage(Math.min(totalPages, Math.max(1, value)));
+                }
+              }}
+            />
+          </label>
           <button className="btn-secondary" onClick={() => setShowAll(true)}>
             Load all
           </button>
         </div>
       )}
       {showAll && (
-        <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
-          Showing all {filteredInternalLinks.length} rows.
+        <div className="pagination-bar">
+          Showing all {sortedLinks.length} rows.
           <button className="btn-secondary" onClick={() => { setShowAll(false); setPage(1); }} style={{ marginLeft: '12px' }}>
             Paginate
           </button>
         </div>
       )}
-      {filteredInternalLinks.length === 0 && !loading && !error ? (
+      {sortedLinks.length === 0 && !loading && !error ? (
         <div className="graph-warning">
           No internal links found. Check your Site URL and click "Rebuild Links".
         </div>
       ) : (
-        <table>
+        <div className="table-wrap">
+          <table>
           <thead>
             <tr>
               <th>ID</th>
@@ -265,7 +440,8 @@ const InternalLinksView: React.FC = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
     </div>
   );
