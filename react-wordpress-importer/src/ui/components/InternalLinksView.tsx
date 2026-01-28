@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { InternalLink } from '../../core/domain/types/InternalLink';
-import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
 import { SiteInfo } from '../../core/domain/types/SiteInfo';
+import { LinkAnalysisService } from '../../data/services/LinkAnalysisService';
 
 const InternalLinksView: React.FC = () => {
   const [allInternalLinks, setAllInternalLinks] = useState<InternalLink[]>([]);
@@ -24,6 +24,7 @@ const InternalLinksView: React.FC = () => {
     samples: string[];
     siteUrl: string;
   } | null>(null);
+  const [computedLinks, setComputedLinks] = useState<InternalLink[]>([]);
 
   useEffect(() => {
     const fetchInternalLinks = async () => {
@@ -72,21 +73,14 @@ const InternalLinksView: React.FC = () => {
   const rebuildLinks = async () => {
     setRebuilding(true);
     try {
+      const service = new LinkAnalysisService();
+      const linkData = await service.rebuildLinks();
+      if ('stats' in linkData) setRebuildStats(linkData.stats);
+      setComputedLinks(linkData.internalLinks as InternalLink[]);
       const dbService = new IndexedDbService();
       await dbService.openDatabase();
-      const posts = await dbService.getPosts();
-      const siteInfo = await dbService.getSiteInfo();
-      const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
-      const linkData = buildInternalAndExternalLinks(posts, siteUrl);
-      if ('stats' in linkData) {
-        setRebuildStats(linkData.stats);
-      }
-      await dbService.clearStore('internalLinks');
-      await dbService.clearStore('externalLinks');
-      await dbService.addData('internalLinks', linkData.internalLinks.map((link) => ({ ...link, Id: undefined })));
-      await dbService.addData('externalLinks', linkData.externalLinks.map((link) => ({ ...link, Id: undefined })));
       const refreshed = await dbService.getInternalLinks();
-      setAllInternalLinks(refreshed);
+      setAllInternalLinks(refreshed.length ? refreshed : (linkData.internalLinks as InternalLink[]));
     } catch (err) {
       console.error('Error rebuilding links:', err);
       setError('Failed to rebuild links.');
@@ -98,15 +92,10 @@ const InternalLinksView: React.FC = () => {
   const scanLinks = async () => {
     setRebuilding(true);
     try {
-      const dbService = new IndexedDbService();
-      await dbService.openDatabase();
-      const posts = await dbService.getPosts();
-      const siteInfo = await dbService.getSiteInfo();
-      const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
-      const linkData = buildInternalAndExternalLinks(posts, siteUrl);
-      if ('stats' in linkData) {
-        setRebuildStats(linkData.stats);
-      }
+      const service = new LinkAnalysisService();
+      const linkData = await service.scanLinks();
+      if ('stats' in linkData) setRebuildStats(linkData.stats);
+      setComputedLinks(linkData.internalLinks as InternalLink[]);
     } finally {
       setRebuilding(false);
     }
@@ -137,11 +126,12 @@ const InternalLinksView: React.FC = () => {
   };
 
   const filteredInternalLinks = useMemo(() => {
+    const source = allInternalLinks.length ? allInternalLinks : computedLinks;
     if (!searchTerm) {
-      return allInternalLinks;
+      return source;
     }
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    return allInternalLinks.filter(link =>
+    return source.filter(link =>
       link.AnchorText.toLowerCase().includes(lowerCaseSearchTerm) ||
       link.SourcePostTitle.toLowerCase().includes(lowerCaseSearchTerm) ||
       link.TargetPostTitle.toLowerCase().includes(lowerCaseSearchTerm) ||
@@ -149,7 +139,7 @@ const InternalLinksView: React.FC = () => {
       link.SourcePostId.toString().includes(lowerCaseSearchTerm) ||
       link.TargetPostId.toString().includes(lowerCaseSearchTerm)
     );
-  }, [allInternalLinks, searchTerm]);
+  }, [allInternalLinks, computedLinks, searchTerm]);
 
   const displayLinks = useMemo(() => {
     if (showAll || filteredInternalLinks.length <= 300) {

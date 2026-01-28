@@ -162,8 +162,10 @@ const UploadScreenV2 = () => {
       logDebug('Building internal/external links.');
       const siteUrl = mappedData.siteInfo.find((info) => info.Key === 'link')?.Value || '';
       const linkData = buildInternalAndExternalLinks(mappedData.posts, siteUrl);
-      await dbService.addData('internalLinks', linkData.internalLinks);
-      await dbService.addData('externalLinks', linkData.externalLinks);
+      const normalizedInternal = linkData.internalLinks.map(({ Id, ...rest }) => rest);
+      const normalizedExternal = linkData.externalLinks.map(({ Id, ...rest }) => rest);
+      await dbService.addData('internalLinks', normalizedInternal);
+      await dbService.addData('externalLinks', normalizedExternal);
 
       setImportStats((prev) => ({
         ...prev,

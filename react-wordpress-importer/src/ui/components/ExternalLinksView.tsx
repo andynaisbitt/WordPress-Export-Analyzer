@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { IndexedDbService } from '../../data/services/IndexedDbService';
 import { ExternalLink } from '../../core/domain/types/ExternalLink';
-import { buildInternalAndExternalLinks } from '../../analysis/links/linkExtractorV2';
 import { SiteInfo } from '../../core/domain/types/SiteInfo';
+import { LinkAnalysisService } from '../../data/services/LinkAnalysisService';
 
 const ExternalLinksView: React.FC = () => {
   const [allLinks, setAllLinks] = useState<ExternalLink[]>([]);
@@ -22,6 +22,7 @@ const ExternalLinksView: React.FC = () => {
     samples: string[];
     siteUrl: string;
   } | null>(null);
+  const [computedLinks, setComputedLinks] = useState<ExternalLink[]>([]);
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -70,21 +71,14 @@ const ExternalLinksView: React.FC = () => {
   const rebuildLinks = async () => {
     setRebuilding(true);
     try {
+      const service = new LinkAnalysisService();
+      const linkData = await service.rebuildLinks();
+      if ('stats' in linkData) setRebuildStats(linkData.stats);
+      setComputedLinks(linkData.externalLinks as ExternalLink[]);
       const dbService = new IndexedDbService();
       await dbService.openDatabase();
-      const posts = await dbService.getPosts();
-      const siteInfo = await dbService.getSiteInfo();
-      const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
-      const linkData = buildInternalAndExternalLinks(posts, siteUrl);
-      if ('stats' in linkData) {
-        setRebuildStats(linkData.stats);
-      }
-      await dbService.clearStore('internalLinks');
-      await dbService.clearStore('externalLinks');
-      await dbService.addData('internalLinks', linkData.internalLinks.map((link) => ({ ...link, Id: undefined })));
-      await dbService.addData('externalLinks', linkData.externalLinks.map((link) => ({ ...link, Id: undefined })));
       const refreshed = await dbService.getExternalLinks();
-      setAllLinks(refreshed);
+      setAllLinks(refreshed.length ? refreshed : (linkData.externalLinks as ExternalLink[]));
     } catch (err) {
       console.error('Error rebuilding links:', err);
       setError('Failed to rebuild links.');
@@ -96,15 +90,10 @@ const ExternalLinksView: React.FC = () => {
   const scanLinks = async () => {
     setRebuilding(true);
     try {
-      const dbService = new IndexedDbService();
-      await dbService.openDatabase();
-      const posts = await dbService.getPosts();
-      const siteInfo = await dbService.getSiteInfo();
-      const siteUrl = siteInfo.find((info) => info.Key === 'link')?.Value || '';
-      const linkData = buildInternalAndExternalLinks(posts, siteUrl);
-      if ('stats' in linkData) {
-        setRebuildStats(linkData.stats);
-      }
+      const service = new LinkAnalysisService();
+      const linkData = await service.scanLinks();
+      if ('stats' in linkData) setRebuildStats(linkData.stats);
+      setComputedLinks(linkData.externalLinks as ExternalLink[]);
     } finally {
       setRebuilding(false);
     }
@@ -132,15 +121,16 @@ const ExternalLinksView: React.FC = () => {
   };
 
   const filtered = useMemo(() => {
-    if (!searchTerm) return allLinks;
+    const source = allLinks.length ? allLinks : computedLinks;
+    if (!searchTerm) return source;
     const needle = searchTerm.toLowerCase();
-    return allLinks.filter(
+    return source.filter(
       (link) =>
         link.Url.toLowerCase().includes(needle) ||
         link.AnchorText.toLowerCase().includes(needle) ||
         link.SourcePostTitle.toLowerCase().includes(needle)
     );
-  }, [allLinks, searchTerm]);
+  }, [allLinks, computedLinks, searchTerm]);
 
   const displayLinks = useMemo(() => {
     if (showAll || filtered.length <= 300) return filtered;
