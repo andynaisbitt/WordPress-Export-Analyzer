@@ -439,7 +439,8 @@ input[type="text"] {
 .comments-view-container,
 .attachments-view-container,
 .post-meta-view-container,
-.internal-links-view-container {
+.internal-links-view-container,
+.external-links-view-container {
   padding: 20px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
@@ -1457,7 +1458,9 @@ body[data-theme="dark"] .tags-view-container,
 body[data-theme="dark"] .authors-view-container,
 body[data-theme="dark"] .comments-view-container,
 body[data-theme="dark"] .attachments-view-container,
-body[data-theme="dark"] .post-meta-view-container {
+body[data-theme="dark"] .post-meta-view-container,
+body[data-theme="dark"] .internal-links-view-container,
+body[data-theme="dark"] .external-links-view-container {
   background: #151a1d;
   border-color: #2b3439;
 }

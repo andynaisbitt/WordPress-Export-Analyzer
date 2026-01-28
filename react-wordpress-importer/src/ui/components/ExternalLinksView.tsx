@@ -23,6 +23,7 @@ const ExternalLinksView: React.FC = () => {
     siteUrl: string;
   } | null>(null);
   const [computedLinks, setComputedLinks] = useState<ExternalLink[]>([]);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -132,10 +133,18 @@ const ExternalLinksView: React.FC = () => {
     );
   }, [allLinks, computedLinks, searchTerm]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, allLinks.length, computedLinks.length]);
+
+  const pageSize = 200;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
   const displayLinks = useMemo(() => {
-    if (showAll || filtered.length <= 300) return filtered;
-    return filtered.slice(0, 300);
-  }, [filtered, showAll]);
+    if (showAll) return filtered;
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, showAll, page]);
 
   if (loading) {
     return <p>Loading external links...</p>;
@@ -194,17 +203,31 @@ const ExternalLinksView: React.FC = () => {
           )}
         </div>
       )}
-      {filtered.length > 300 && (
+      {filtered.length > pageSize && !showAll && (
+        <div style={{ marginBottom: '12px', color: '#6a7a83', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>Page {page} of {totalPages}</span>
+          <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+            Prev
+          </button>
+          <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+            Next
+          </button>
+          <button className="btn-secondary" onClick={() => setShowAll(true)}>
+            Load all
+          </button>
+        </div>
+      )}
+      {showAll && (
         <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
-          Showing {displayLinks.length} of {filtered.length}. Rendering too many rows can be slow.
-          <button className="btn-secondary" onClick={() => setShowAll((prev) => !prev)} style={{ marginLeft: '12px' }}>
-            {showAll ? 'Show less' : 'Load all'}
+          Showing all {filtered.length} rows.
+          <button className="btn-secondary" onClick={() => { setShowAll(false); setPage(1); }} style={{ marginLeft: '12px' }}>
+            Paginate
           </button>
         </div>
       )}
       {filtered.length === 0 ? (
         <div className="graph-warning">
-          No external links found. Check your Site URL and click “Rebuild Links”.
+          No external links found. Check your Site URL and click "Rebuild Links".
         </div>
       ) : (
         <table>

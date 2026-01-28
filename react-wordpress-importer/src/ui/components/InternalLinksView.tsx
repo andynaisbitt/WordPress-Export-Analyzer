@@ -12,6 +12,7 @@ const InternalLinksView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
   const [rebuilding, setRebuilding] = useState(false);
   const [siteInfo, setSiteInfo] = useState<SiteInfo[]>([]);
   const [rebuildStats, setRebuildStats] = useState<{
@@ -141,12 +142,18 @@ const InternalLinksView: React.FC = () => {
     );
   }, [allInternalLinks, computedLinks, searchTerm]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, allInternalLinks.length, computedLinks.length]);
+
+  const pageSize = 200;
+  const totalPages = Math.max(1, Math.ceil(filteredInternalLinks.length / pageSize));
+
   const displayLinks = useMemo(() => {
-    if (showAll || filteredInternalLinks.length <= 300) {
-      return filteredInternalLinks;
-    }
-    return filteredInternalLinks.slice(0, 300);
-  }, [filteredInternalLinks, showAll]);
+    if (showAll) return filteredInternalLinks;
+    const start = (page - 1) * pageSize;
+    return filteredInternalLinks.slice(start, start + pageSize);
+  }, [filteredInternalLinks, showAll, page]);
 
   if (loading) {
     return <p>Loading internal links...</p>;
@@ -206,17 +213,31 @@ const InternalLinksView: React.FC = () => {
           )}
         </div>
       )}
-      {filteredInternalLinks.length > 300 && (
+      {filteredInternalLinks.length > pageSize && !showAll && (
+        <div style={{ marginBottom: '12px', color: '#6a7a83', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>Page {page} of {totalPages}</span>
+          <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+            Prev
+          </button>
+          <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+            Next
+          </button>
+          <button className="btn-secondary" onClick={() => setShowAll(true)}>
+            Load all
+          </button>
+        </div>
+      )}
+      {showAll && (
         <div style={{ marginBottom: '12px', color: '#6a7a83' }}>
-          Showing {displayLinks.length} of {filteredInternalLinks.length}. Rendering too many rows can be slow.
-          <button className="btn-secondary" onClick={() => setShowAll((prev) => !prev)} style={{ marginLeft: '12px' }}>
-            {showAll ? 'Show less' : 'Load all'}
+          Showing all {filteredInternalLinks.length} rows.
+          <button className="btn-secondary" onClick={() => { setShowAll(false); setPage(1); }} style={{ marginLeft: '12px' }}>
+            Paginate
           </button>
         </div>
       )}
       {filteredInternalLinks.length === 0 && !loading && !error ? (
         <div className="graph-warning">
-          No internal links found. Check your Site URL and click “Rebuild Links”.
+          No internal links found. Check your Site URL and click "Rebuild Links".
         </div>
       ) : (
         <table>
