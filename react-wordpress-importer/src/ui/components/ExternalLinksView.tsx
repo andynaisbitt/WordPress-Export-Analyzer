@@ -444,6 +444,7 @@ const ExternalLinksView: React.FC = () => {
                       </button>
                       <button
                         className="btn-secondary btn-mini"
+                        disabled={!link.Url}
                         onClick={() => handleCopy(link.Url, `${link.SourcePostId}-${idx}-copy`)}
                       >
                         {copiedRow === `${link.SourcePostId}-${idx}-copy` ? 'Copied' : 'Copy URL'}

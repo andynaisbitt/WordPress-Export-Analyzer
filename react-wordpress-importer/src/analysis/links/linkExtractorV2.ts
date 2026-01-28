@@ -50,6 +50,18 @@ const normalizeUrl = (url: string) => {
   return url.replace(/#.*$/, '').trim();
 };
 
+const resolveInternalUrl = (href: string, siteUrl: string) => {
+  if (!href) return '';
+  if (href.startsWith('//')) return `https:${href}`;
+  if (href.startsWith('http://') || href.startsWith('https://')) return href;
+  if (!siteUrl) return href;
+  try {
+    return new URL(href, siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`).toString();
+  } catch {
+    return href;
+  }
+};
+
 const isRelativeLink = (url: string) => {
   if (!url) return false;
   if (url.startsWith('#')) return false;
@@ -135,10 +147,13 @@ export const buildInternalAndExternalLinks = (posts: Post[], siteUrl: string) =>
       if (isInternalUrl(href, siteUrl)) {
         const target = findTargetPost(href, posts);
         if (!target) stats.unresolvedInternal += 1;
+        const resolvedUrl = resolveInternalUrl(href, siteUrl);
         internalLinks.push({
           SourcePostId: post.PostId,
           TargetPostId: target ? target.PostId : 0,
           AnchorText: link.text,
+          Href: href,
+          TargetUrl: target?.PostName ? resolveInternalUrl(`/${target.PostName}`, siteUrl) : resolvedUrl,
           SourcePostTitle: post.Title,
           TargetPostTitle: target?.Title || '',
           TargetPostName: target?.PostName || '',

@@ -60,7 +60,7 @@ export const buildGraphInsights = (posts: Post[], links: InternalLink[]): GraphI
 };
 
 export const buildLinkMapCsv = (links: InternalLink[]) => {
-  const headers = ['source_post_id', 'source_title', 'target_post_id', 'target_title', 'target_slug', 'anchor_text'];
+  const headers = ['source_post_id', 'source_title', 'target_post_id', 'target_title', 'target_slug', 'anchor_text', 'href', 'target_url'];
   const rows = links.map((link) => [
     link.SourcePostId,
     link.SourcePostTitle,
@@ -68,6 +68,8 @@ export const buildLinkMapCsv = (links: InternalLink[]) => {
     link.TargetPostTitle,
     link.TargetPostName,
     (link.AnchorText || '').replace(/\s+/g, ' ').trim(),
+    link.Href || '',
+    link.TargetUrl || '',
   ]);
   const escape = (value: string | number) => {
     const str = String(value ?? '');

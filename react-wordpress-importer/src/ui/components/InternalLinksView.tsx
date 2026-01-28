@@ -28,6 +28,8 @@ const InternalLinksView: React.FC = () => {
     sourceId: true,
     targetId: true,
     anchor: true,
+    href: true,
+    targetUrl: true,
     sourceTitle: true,
     targetTitle: true,
     targetStatus: true,
@@ -119,6 +121,13 @@ const InternalLinksView: React.FC = () => {
     return `${base.replace(/\/+$/, '')}/${trimmedSlug}`;
   };
 
+  const resolveDisplayUrl = (link: InternalLink) => {
+    if (link.TargetUrl) return link.TargetUrl;
+    if (link.TargetPostName) return buildTargetUrl(link.TargetPostName);
+    if (link.Href) return link.Href;
+    return '';
+  };
+
   const handleCopy = async (value: string, rowKey: string) => {
     if (!value) return;
     try {
@@ -186,6 +195,8 @@ const InternalLinksView: React.FC = () => {
       { key: 'sourceId', label: 'source_post_id', value: (link: InternalLink) => link.SourcePostId },
       { key: 'targetId', label: 'target_post_id', value: (link: InternalLink) => link.TargetPostId },
       { key: 'anchor', label: 'anchor_text', value: (link: InternalLink) => link.AnchorText },
+      { key: 'href', label: 'href', value: (link: InternalLink) => link.Href },
+      { key: 'targetUrl', label: 'target_url', value: (link: InternalLink) => resolveDisplayUrl(link) },
       { key: 'sourceTitle', label: 'source_title', value: (link: InternalLink) => link.SourcePostTitle },
       { key: 'targetTitle', label: 'target_title', value: (link: InternalLink) => link.TargetPostTitle },
       { key: 'targetSlug', label: 'target_slug', value: (link: InternalLink) => link.TargetPostName },
@@ -214,6 +225,8 @@ const InternalLinksView: React.FC = () => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
     return source.filter(link =>
       link.AnchorText.toLowerCase().includes(lowerCaseSearchTerm) ||
+      (link.Href || '').toLowerCase().includes(lowerCaseSearchTerm) ||
+      (link.TargetUrl || '').toLowerCase().includes(lowerCaseSearchTerm) ||
       link.SourcePostTitle.toLowerCase().includes(lowerCaseSearchTerm) ||
       link.TargetPostTitle.toLowerCase().includes(lowerCaseSearchTerm) ||
       link.TargetPostStatus.toLowerCase().includes(lowerCaseSearchTerm) ||
@@ -499,6 +512,8 @@ const InternalLinksView: React.FC = () => {
               {visibleColumns.sourceId && <th>Source Post ID</th>}
               {visibleColumns.targetId && <th>Target Post ID</th>}
               {visibleColumns.anchor && <th>Anchor Text</th>}
+              {visibleColumns.href && <th>Href</th>}
+              {visibleColumns.targetUrl && <th>Target URL</th>}
               {visibleColumns.sourceTitle && <th>Source Post Title</th>}
               {visibleColumns.targetTitle && <th>Target Post Title</th>}
               {visibleColumns.targetStatus && <th>Target Post Status</th>}
@@ -512,6 +527,8 @@ const InternalLinksView: React.FC = () => {
                 {visibleColumns.sourceId && <td>{link.SourcePostId}</td>}
                 {visibleColumns.targetId && <td>{link.TargetPostId}</td>}
                 {visibleColumns.anchor && <td>{link.AnchorText || 'N/A'}</td>}
+                {visibleColumns.href && <td>{link.Href || 'N/A'}</td>}
+                {visibleColumns.targetUrl && <td>{resolveDisplayUrl(link) || 'N/A'}</td>}
                 {visibleColumns.sourceTitle && <td>{link.SourcePostTitle || 'N/A'}</td>}
                 {visibleColumns.targetTitle && <td>{link.TargetPostTitle || 'N/A'}</td>}
                 {visibleColumns.targetStatus && <td>{link.TargetPostStatus || 'N/A'}</td>}
@@ -521,12 +538,17 @@ const InternalLinksView: React.FC = () => {
                       <button className="btn-secondary btn-mini" onClick={() => navigate(`/posts/${link.SourcePostId}`)}>
                         Open source
                       </button>
-                      <button className="btn-secondary btn-mini" onClick={() => navigate(`/posts/${link.TargetPostId}`)}>
+                      <button
+                        className="btn-secondary btn-mini"
+                        disabled={!link.TargetPostId}
+                        onClick={() => link.TargetPostId && navigate(`/posts/${link.TargetPostId}`)}
+                      >
                         Open target
                       </button>
                       <button
                         className="btn-secondary btn-mini"
-                        onClick={() => handleCopy(buildTargetUrl(link.TargetPostName), `${link.SourcePostId}-${link.TargetPostId}-copy`)}
+                        disabled={!resolveDisplayUrl(link)}
+                        onClick={() => handleCopy(resolveDisplayUrl(link), `${link.SourcePostId}-${link.TargetPostId}-copy`)}
                       >
                         {copiedRow === `${link.SourcePostId}-${link.TargetPostId}-copy` ? 'Copied' : 'Copy URL'}
                       </button>

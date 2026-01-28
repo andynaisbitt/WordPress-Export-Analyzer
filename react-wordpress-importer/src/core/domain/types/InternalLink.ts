@@ -5,6 +5,8 @@ export interface InternalLink {
     SourcePostId: number;
     TargetPostId: number;
     AnchorText: string;
+    Href?: string;
+    TargetUrl?: string;
     SourcePostTitle: string;
     TargetPostTitle: string;
     TargetPostName: string;
